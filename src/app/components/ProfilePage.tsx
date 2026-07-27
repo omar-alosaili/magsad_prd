@@ -5,10 +5,12 @@ import type { List as ListType, Place } from "./data";
 import type { Profile } from "../lib/types";
 import { getMyLists } from "../lib/lists";
 import { getVisitedPlaces } from "../lib/visitedPlaces";
-import { getSuggestedUsers, getFollowingIds, toggleFollowUser, updateProfile, getFollowCounts, isUsernameAvailable, USERNAME_RE, uploadAvatar, MAX_AVATAR_BYTES } from "../lib/profile";
+import { getSuggestedUsers, getFollowingIds, toggleFollowUser, updateProfile, getFollowCounts, isUsernameAvailable, USERNAME_RE, uploadAvatar, deleteAvatarFiles, MAX_AVATAR_BYTES } from "../lib/profile";
 import { getPlaces } from "../lib/places";
 import { toast } from "../lib/toast";
 import { Button } from "./Button";
+import { sizedImage, IMG } from "../lib/types";
+import { useSheetA11y } from "./Sheet";
 
 type Props = {
   userId: string | null;
@@ -155,7 +157,12 @@ export function ProfilePage({ userId, currentUser, onPlaceClick, onListClick, on
       website: editWebsite.trim() || null,
       personalization_opt_in: editPersonalization,
     })
-      .then(() => { setShowEditModal(false); onProfileUpdated?.(); toast.success("تم حفظ ملفك الشخصي"); })
+      .then(() => {
+        // Picture removed: drop the stored file too, or it lingers in the
+        // bucket forever with nothing pointing at it.
+        if (!editAvatarUrl) deleteAvatarFiles(userId).catch(() => {});
+        setShowEditModal(false); onProfileUpdated?.(); toast.success("تم حفظ ملفك الشخصي");
+      })
       .catch(() => toast.error("تعذّر حفظ الملف — حاول مجدداً"))
       .finally(() => setSavingProfile(false));
   };
@@ -195,6 +202,8 @@ export function ProfilePage({ userId, currentUser, onPlaceClick, onListClick, on
     );
   }
 
+  const editSheet = useSheetA11y(showEditModal, () => setShowEditModal(false), "تعديل الملف");
+
   return (
     <div className="flex-1 overflow-y-auto pb-24" dir="rtl">
       {/* Header */}
@@ -204,11 +213,13 @@ export function ProfilePage({ userId, currentUser, onPlaceClick, onListClick, on
             <div className="relative">
               {currentUser.avatar_url ? (
                 <img
-                  src={currentUser.avatar_url}
+                  src={sizedImage(currentUser.avatar_url, IMG.thumb)}
                   alt={currentUser.name}
                   className="w-20 h-20 rounded-full object-cover border-3 border-accent"
                   style={{ borderWidth: 3 }}
-                />
+          loading="lazy"
+          decoding="async"
+        />
               ) : (
                 <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center border-3 border-accent text-2xl font-bold text-muted-foreground" style={{ borderWidth: 3 }}>
                   {currentUser.name?.[0] ?? "؟"}
@@ -297,7 +308,7 @@ export function ProfilePage({ userId, currentUser, onPlaceClick, onListClick, on
                   className="flex gap-3 p-3 bg-card border border-border rounded-2xl cursor-pointer hover:shadow-md transition-shadow"
                   {...tappable(() => onListClick(list.id), list.title)}
                 >
-                  <img src={list.coverImage} alt={list.title} className="w-16 h-16 rounded-xl object-cover flex-shrink-0" />
+                  <img src={sizedImage(list.coverImage, IMG.thumb)} alt={list.title} className="w-16 h-16 rounded-xl object-cover flex-shrink-0" loading="lazy" decoding="async" />
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-semibold text-foreground">{list.title}</h3>
                     <p className="text-xs text-muted-foreground mt-0.5">{list.placeCount} أماكن · {list.followers} متابع</p>
@@ -326,7 +337,7 @@ export function ProfilePage({ userId, currentUser, onPlaceClick, onListClick, on
                     className="bg-card border border-border rounded-2xl overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
                     {...tappable(() => onPlaceClick(place.id), place.name)}
                   >
-                    <img src={place.image} alt={place.name} className="w-full h-28 object-cover" />
+                    <img src={sizedImage(place.image, IMG.card)} alt={place.name} className="w-full h-28 object-cover" loading="lazy" decoding="async" />
                     <div className="p-2.5">
                       <h3 className="text-xs font-semibold text-foreground truncate">{place.name}</h3>
                       <p className="text-xs text-muted-foreground mt-0.5">{place.district}</p>
@@ -358,7 +369,7 @@ export function ProfilePage({ userId, currentUser, onPlaceClick, onListClick, on
                           className="bg-card border border-border rounded-2xl overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
                           {...tappable(() => onPlaceClick(place.id), place.name)}
                         >
-                          <img src={place.image} alt={place.name} className="w-full h-28 object-cover" />
+                          <img src={sizedImage(place.image, IMG.card)} alt={place.name} className="w-full h-28 object-cover" loading="lazy" decoding="async" />
                           <div className="p-2.5">
                             <h3 className="text-xs font-semibold text-foreground truncate">{place.name}</h3>
                             <p className="text-xs text-muted-foreground mt-0.5">{place.district}</p>
@@ -380,7 +391,7 @@ export function ProfilePage({ userId, currentUser, onPlaceClick, onListClick, on
                           className="bg-card border border-border rounded-2xl overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
                           {...tappable(() => onPlaceClick(place.id), place.name)}
                         >
-                          <img src={place.image} alt={place.name} className="w-full h-28 object-cover" />
+                          <img src={sizedImage(place.image, IMG.card)} alt={place.name} className="w-full h-28 object-cover" loading="lazy" decoding="async" />
                           <div className="p-2.5">
                             <h3 className="text-xs font-semibold text-foreground truncate">{place.name}</h3>
                             <p className="text-xs text-muted-foreground mt-0.5">{place.district}</p>
@@ -404,7 +415,7 @@ export function ProfilePage({ userId, currentUser, onPlaceClick, onListClick, on
             {suggestedUsers.map(u => (
               <div key={u.id} className="flex items-center gap-3 p-3 bg-card border border-border rounded-2xl">
                 {u.avatar_url ? (
-                  <img src={u.avatar_url} alt={u.name} className="w-11 h-11 rounded-full object-cover flex-shrink-0" />
+                  <img src={sizedImage(u.avatar_url, IMG.thumb)} alt={u.name} className="w-11 h-11 rounded-full object-cover flex-shrink-0" loading="lazy" decoding="async" />
                 ) : (
                   <div className="w-11 h-11 rounded-full bg-muted flex items-center justify-center flex-shrink-0 text-sm font-bold text-muted-foreground">
                     {u.name?.[0] ?? "؟"}
@@ -445,7 +456,7 @@ export function ProfilePage({ userId, currentUser, onPlaceClick, onListClick, on
 
       {/* Edit Profile Modal */}
       {showEditModal && (
-        <div className="absolute inset-0 z-50 flex items-end" dir="rtl">
+        <div className="absolute inset-0 z-50 flex items-end" dir="rtl" {...editSheet}>
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowEditModal(false)} />
           <div className="relative w-full bg-card rounded-t-3xl p-6 max-h-[88vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-5">
@@ -459,7 +470,7 @@ export function ProfilePage({ userId, currentUser, onPlaceClick, onListClick, on
               <div className="flex items-center gap-4">
                 <div className="relative">
                   {editAvatarUrl ? (
-                    <img src={editAvatarUrl} alt="صورة الملف" className="w-16 h-16 rounded-full object-cover" />
+                    <img src={editAvatarUrl} alt="صورة الملف" className="w-16 h-16 rounded-full object-cover" loading="lazy" decoding="async" />
                   ) : (
                     <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center text-xl font-bold text-muted-foreground">
                       {editName?.[0] ?? "؟"}
@@ -500,7 +511,7 @@ export function ProfilePage({ userId, currentUser, onPlaceClick, onListClick, on
               </div>
               <div>
                 <label className="text-xs text-muted-foreground mb-1.5 block">المعرّف (username)</label>
-                <div className="flex items-center bg-input-background border border-border rounded-2xl px-4">
+                <div className="flex items-center bg-input-background border border-border rounded-2xl px-4 focus-within:ring-2 focus-within:ring-accent/30">
                   <span className="text-sm text-muted-foreground">@</span>
                   <input
                     type="text"

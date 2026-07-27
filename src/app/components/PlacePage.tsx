@@ -5,7 +5,7 @@ import {
   ArrowRight, Bookmark, Share2, MapPin, Clock, Star, Wifi, Users, Baby,
   Trees, Car, ExternalLink, ChevronLeft, Plus, X, Check, Camera, Flag
 } from "lucide-react";
-import { type Place, type List, displayRating } from "./data";
+import { type Place, type List, displayRating, isRecentlyAdded } from "./data";
 import { Button } from "./Button";
 import { getPlaceById, invalidatePlacesCache } from "../lib/places";
 import { getListsContainingPlace, getMyLists, addPlaceToList } from "../lib/lists";
@@ -18,6 +18,8 @@ import {
 import { toast } from "../lib/toast";
 import { OpeningHours } from "./OpeningHours";
 import type { Review } from "../lib/types";
+import { sizedImage, IMG } from "../lib/types";
+import { useSheetA11y } from "./Sheet";
 
 type Props = {
   placeId: string;
@@ -61,6 +63,7 @@ export function PlacePage({ placeId, userId, onBack, savedPlaces, onSave, onList
   // could silently drop the user's last choice (same guard as handleSave).
   const visitInFlight = useRef(false);
   const visitTouched = useRef(false);
+  const saveSheet = useSheetA11y(showSaveModal, () => setShowSaveModal(false), "احفظ في قائمة");
 
   useEffect(() => {
     // Reset per-place UI state so navigating place→place doesn't carry
@@ -202,12 +205,13 @@ export function PlacePage({ placeId, userId, onBack, savedPlaces, onSave, onList
 
   if (!place) return null;
 
+
   return (
     <div className="flex-1 overflow-y-auto pb-24" dir="rtl">
       {/* Images Carousel */}
       <div className="relative h-72 bg-muted">
         <img
-          src={place.images[activeImage]}
+          src={sizedImage(place.images[activeImage], IMG.hero)}
           alt={place.name}
           className="w-full h-full object-cover"
         />
@@ -265,7 +269,7 @@ export function PlacePage({ placeId, userId, onBack, savedPlaces, onSave, onList
 
         {/* Badges */}
         <div className="absolute bottom-8 right-4 flex gap-2">
-          {place.isNew && (
+          {isRecentlyAdded(place) && (
             <span className="bg-accent text-white text-xs px-2.5 py-1 rounded-full font-medium">جديد</span>
           )}
           {place.isVerified && (
@@ -397,7 +401,11 @@ export function PlacePage({ placeId, userId, onBack, savedPlaces, onSave, onList
 
         {tab === "info" && (
           <div>
-            <p className="text-sm text-foreground leading-relaxed mb-4">{place.description}</p>
+            {/* Google-synced places carry no description — render nothing
+                rather than an empty block that reads as a broken page. */}
+            {place.description.trim() && (
+              <p className="text-sm text-foreground leading-relaxed mb-4">{place.description}</p>
+            )}
             <div className="flex flex-wrap gap-2">
               {place.tags.map(tag => (
                 <span key={tag} className="text-xs bg-secondary text-secondary-foreground px-3 py-1 rounded-full">
@@ -477,7 +485,7 @@ export function PlacePage({ placeId, userId, onBack, savedPlaces, onSave, onList
                 <div className="flex items-center gap-2 mb-3 flex-wrap">
                   {reviewPhotos.map(url => (
                     <div key={url} className="relative">
-                      <img src={url} alt="صورة مرفقة" className="w-14 h-14 rounded-xl object-cover" />
+                      <img src={url} alt="صورة مرفقة" className="w-14 h-14 rounded-xl object-cover" loading="lazy" decoding="async" />
                       <button
                         onClick={() => setReviewPhotos(prev => prev.filter(p => p !== url))}
                         aria-label="إزالة الصورة"
@@ -523,7 +531,7 @@ export function PlacePage({ placeId, userId, onBack, savedPlaces, onSave, onList
                   <div key={review.id} className="bg-card border border-border rounded-2xl p-4">
                     <div className="flex items-center gap-3 mb-3">
                       {review.avatar && (
-                        <img src={review.avatar} alt={review.user} className="w-9 h-9 rounded-full object-cover" />
+                        <img src={sizedImage(review.avatar, IMG.thumb)} alt={review.user} className="w-9 h-9 rounded-full object-cover" loading="lazy" decoding="async" />
                       )}
                       <div>
                         <p className="text-sm font-semibold text-foreground">{review.user}</p>
@@ -551,7 +559,7 @@ export function PlacePage({ placeId, userId, onBack, savedPlaces, onSave, onList
                       <div className="flex gap-2 mt-2.5">
                         {review.photos.map(url => (
                           <a key={url} href={url} target="_blank" rel="noopener noreferrer">
-                            <img src={url} alt={`صورة من ${review.user}`} className="w-20 h-20 rounded-xl object-cover" />
+                            <img src={url} alt={`صورة من ${review.user}`} className="w-20 h-20 rounded-xl object-cover" loading="lazy" decoding="async" />
                           </a>
                         ))}
                       </div>
@@ -576,7 +584,7 @@ export function PlacePage({ placeId, userId, onBack, savedPlaces, onSave, onList
                     className="flex items-center gap-3 p-3 bg-card border border-border rounded-2xl cursor-pointer hover:border-accent/30 transition-colors"
                     {...tappable(() => onListClick(list.id), list.title)}
                   >
-                    <img src={list.coverImage} alt={list.title} className="w-14 h-14 rounded-xl object-cover flex-shrink-0" />
+                    <img src={sizedImage(list.coverImage, IMG.thumb)} alt={list.title} className="w-14 h-14 rounded-xl object-cover flex-shrink-0" loading="lazy" decoding="async" />
                     <div className="flex-1 min-w-0">
                       <h3 className="text-sm font-semibold text-foreground">{list.title}</h3>
                       <p className="text-xs text-muted-foreground mt-0.5">{list.placeCount} أماكن · {list.followers} متابع</p>
@@ -676,7 +684,7 @@ export function PlacePage({ placeId, userId, onBack, savedPlaces, onSave, onList
 
       {/* Save Modal */}
       {showSaveModal && (
-        <div className="absolute inset-0 z-50 flex items-end" dir="rtl">
+        <div className="absolute inset-0 z-50 flex items-end" dir="rtl" {...saveSheet}>
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowSaveModal(false)} />
           <div className="relative w-full bg-card rounded-t-3xl p-6 max-h-[70vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-5">
@@ -697,7 +705,7 @@ export function PlacePage({ placeId, userId, onBack, savedPlaces, onSave, onList
                     onClick={() => saveToList(list.id)}
                     className="flex items-center gap-3 p-3 rounded-2xl border border-border hover:border-accent/40 transition-colors text-right"
                   >
-                    <img src={list.coverImage} alt={list.title} className="w-12 h-12 rounded-xl object-cover" />
+                    <img src={sizedImage(list.coverImage, IMG.thumb)} alt={list.title} className="w-12 h-12 rounded-xl object-cover" loading="lazy" decoding="async" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold truncate">{list.title}</p>
                       <p className="text-xs text-muted-foreground">{list.placeCount} أماكن</p>

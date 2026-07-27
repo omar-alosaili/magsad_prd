@@ -38,6 +38,20 @@ export async function updateProfile(userId: string, patch: ProfileEdit): Promise
 // Optional profile picture — stored in the user-photos bucket under the
 // owner's uid folder (same RLS as review photos). 5MB cap.
 export const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
+// Avatar paths are timestamped, so a replacement used to leave the old
+// object behind forever — unbounded per-user storage growth. Delete the
+// superseded file(s) after a successful upload / on removal.
+const AVATAR_PREFIX = "avatar-";
+
+export async function deleteAvatarFiles(userId: string, keepPath?: string): Promise<void> {
+  const { data, error } = await supabase.storage.from("user-photos").list(userId);
+  if (error || !data) return; // best-effort: never block the profile save
+  const stale = data
+    .filter(f => f.name.startsWith(AVATAR_PREFIX) && `${userId}/${f.name}` !== keepPath)
+    .map(f => `${userId}/${f.name}`);
+  if (stale.length) await supabase.storage.from("user-photos").remove(stale);
+}
+
 export async function uploadAvatar(userId: string, file: File): Promise<string> {
   if (file.size > MAX_AVATAR_BYTES) throw new Error("avatar_too_large");
   const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
@@ -46,6 +60,9 @@ export async function uploadAvatar(userId: string, file: File): Promise<string> 
     contentType: file.type || "image/jpeg",
   });
   if (error) throw error;
+  // Only after the new file is safely stored — a failed cleanup costs an
+  // orphan, a premature one would lose the user's picture.
+  await deleteAvatarFiles(userId, path).catch(() => {});
   const { data } = supabase.storage.from("user-photos").getPublicUrl(path);
   return data.publicUrl;
 }

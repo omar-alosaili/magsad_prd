@@ -82,6 +82,7 @@ export function NotificationsPanel({ open, onClose, userId, onPlaceClick }: Prop
                 <button onClick={handleMarkAllRead} className="text-xs text-accent font-semibold">تعليم الكل مقروء</button>
                 <button
                   onClick={onClose}
+                  aria-label="إغلاق الإشعارات"
                   className="w-8 h-8 rounded-full bg-muted flex items-center justify-center"
                 >
                   <X size={16} className="text-foreground" />

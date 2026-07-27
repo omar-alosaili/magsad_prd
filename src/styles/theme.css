@@ -26,9 +26,11 @@
      ratings, and success/warning/info states (was hardcoded green/red/
      amber/blue literals scattered across components). Each has a text
      tone and a soft background tone for pills. */
-  --rating: #F59E0B;
+  /* Was #F59E0B — only 2.15:1 on white, failing even the 3:1 bar for
+     meaningful graphics. #B45309 keeps the amber read at 4.8:1. */
+  --rating: #B45309;
   --success: #15803D;      --success-soft: #DCFCE7;
-  --danger: #DC2626;       --danger-soft: #FEF2F2;
+  --danger: #B91C1C;       --danger-soft: #FEF2F2;  /* 4.41:1 -> 6.0:1 on the soft fill */
   --warning: #B45309;      --warning-soft: #FEF3C7;
   --info: #2563EB;         --info-soft: #EFF6FF;
   --border: rgba(44, 24, 16, 0.12);

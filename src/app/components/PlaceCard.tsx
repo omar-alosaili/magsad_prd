@@ -1,6 +1,7 @@
 import { Bookmark, Star, MapPin, Wifi, Users, Baby, Trees } from "lucide-react";
-import { Place, displayRating } from "./data";
+import { Place, displayRating, isRecentlyAdded } from "./data";
 import { tappable } from "../lib/a11y";
+import { sizedImage, IMG } from "../lib/types";
 
 type Props = {
   place: Place;
@@ -22,9 +23,11 @@ export function PlaceCard({ place, onSave, saved, onClick, compact }: Props) {
         dir="rtl"
       >
         <img
-          src={place.image}
+          src={sizedImage(place.image, IMG.thumb)}
           alt={place.name}
           className="w-20 h-20 rounded-xl object-cover flex-shrink-0"
+          loading="lazy"
+          decoding="async"
         />
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
@@ -71,14 +74,16 @@ export function PlaceCard({ place, onSave, saved, onClick, compact }: Props) {
     >
       <div className="relative">
         <img
-          src={place.image}
+          src={sizedImage(place.image, IMG.card)}
           alt={place.name}
           className="w-full h-52 object-cover group-hover:scale-105 transition-transform duration-500"
+          loading="lazy"
+          decoding="async"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
 
         <div className="absolute top-3 right-3 flex gap-2">
-          {place.isNew && (
+          {isRecentlyAdded(place) && (
             <span className="bg-accent text-white text-xs px-2.5 py-1 rounded-full font-medium">
               جديد
             </span>

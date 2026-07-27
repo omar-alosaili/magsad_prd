@@ -207,9 +207,15 @@ export default function App() {
   };
 
   const handleLogout = () => {
-    supabase.auth.signOut().catch(console.error);
-    setActiveTab("home");
-    setScreen({ type: "home" });
+    // Only navigate once the session is actually gone: pretending to sign out
+    // while the session survives is a real risk on a shared phone.
+    supabase.auth.signOut()
+      .then(({ error }) => {
+        if (error) throw error;
+        setActiveTab("home");
+        setScreen({ type: "home" });
+      })
+      .catch(() => toast.error("تعذّر تسجيل الخروج — تحقق من اتصالك وحاول مجدداً"));
   };
 
   const refreshProfile = (): Promise<void> => {
@@ -422,7 +428,12 @@ export default function App() {
 
         {/* Bottom Tab Bar */}
         {onboarded && !isFullScreen && !needsUsername && (
-          <div className="flex-shrink-0 bg-card/96 backdrop-blur-sm border-t border-border z-20" dir="rtl">
+          <div
+            className="flex-shrink-0 bg-card/96 backdrop-blur-sm border-t border-border z-20"
+            dir="rtl"
+            // Keep the tabs clear of the iPhone home-bar / gesture area
+            style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+          >
             <div className="flex items-center justify-around px-1 pt-2 pb-1">
               {tabs.map(tab => {
                 const active = activeTab === tab.key;

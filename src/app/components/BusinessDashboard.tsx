@@ -9,6 +9,7 @@ import { uploadPlacePhoto } from "../lib/storage";
 import { updateProfile } from "../lib/profile";
 import { toast } from "../lib/toast";
 import { Button } from "./Button";
+import { useSheetA11y } from "./Sheet";
 
 type Props = { userId: string; placeId: string; onBack: () => void };
 
@@ -43,6 +44,9 @@ export function BusinessDashboard({ userId, placeId, onBack }: Props) {
 
   const [uploading, setUploading] = useState(false);
   const [notifEnabled, setNotifEnabled] = useState(false);
+  const sheet1 = useSheetA11y(showOfferModal, () => setShowOfferModal(false), "عرض جديد");
+  const sheet2 = useSheetA11y(showEditPlaceModal, () => setShowEditPlaceModal(false), "تعديل بيانات المكان");
+  const sheet3 = useSheetA11y(showPromoModal, () => setShowPromoModal(false), "طلب ترويج");
   const [formError, setFormError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -177,11 +181,12 @@ export function BusinessDashboard({ userId, placeId, onBack }: Props) {
     { label: "التقييم العام", value: place.rating.toLocaleString("en-US") },
   ];
 
+
   return (
     <div className="flex-1 overflow-y-auto pb-24" dir="rtl">
       <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm px-5 pt-14 pb-4">
         <div className="flex items-center gap-3 mb-4">
-          <button onClick={onBack} className="w-9 h-9 rounded-full bg-card border border-border flex items-center justify-center">
+          <button onClick={onBack} aria-label="رجوع" className="w-9 h-9 rounded-full bg-card border border-border flex items-center justify-center">
             <ArrowRight size={18} className="text-foreground" />
           </button>
           <div>
@@ -387,7 +392,7 @@ export function BusinessDashboard({ userId, placeId, onBack }: Props) {
 
       {/* Offer Modal */}
       {showOfferModal && (
-        <div className="absolute inset-0 z-50 flex items-end" dir="rtl">
+        <div className="absolute inset-0 z-50 flex items-end" dir="rtl" {...sheet1}>
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowOfferModal(false)} />
           <div className="relative w-full bg-card rounded-t-3xl p-6">
             <div className="flex items-center justify-between mb-5">
@@ -451,7 +456,7 @@ export function BusinessDashboard({ userId, placeId, onBack }: Props) {
 
       {/* Edit Place Modal */}
       {showEditPlaceModal && (
-        <div className="absolute inset-0 z-50 flex items-end" dir="rtl">
+        <div className="absolute inset-0 z-50 flex items-end" dir="rtl" {...sheet2}>
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowEditPlaceModal(false)} />
           <div className="relative w-full bg-card rounded-t-3xl p-6 max-h-[80vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-5">
@@ -500,7 +505,7 @@ export function BusinessDashboard({ userId, placeId, onBack }: Props) {
 
       {/* Promotion Request Modal */}
       {showPromoModal && (
-        <div className="absolute inset-0 z-50 flex items-end" dir="rtl">
+        <div className="absolute inset-0 z-50 flex items-end" dir="rtl" {...sheet3}>
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowPromoModal(false)} />
           <div className="relative w-full bg-card rounded-t-3xl p-6">
             <div className="flex items-center justify-between mb-5">

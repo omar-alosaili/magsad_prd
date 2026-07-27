@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Search, Bell, ChevronLeft, Heart, Bookmark, Star } from "lucide-react";
 import { motion } from "motion/react";
-import type { Place, List, Offer } from "./data";
+import { isRecentlyAdded, type Place, type List, type Offer } from "./data";
 import { getPlaces, getNewInRiyadh } from "../lib/places";
 import { getPublicLists } from "../lib/lists";
 import { getActiveOffers } from "../lib/offers";
@@ -16,6 +16,7 @@ import { getActivePromotions } from "../lib/promotions";
 import type { Profile } from "../lib/types";
 import { NotificationsPanel } from "./NotificationsPanel";
 import { FeaturedHero } from "./FeaturedHero";
+import { sizedImage, IMG } from "../lib/types";
 
 type Props = {
   onPlaceClick: (id: string) => void;
@@ -56,11 +57,19 @@ export function HomePage({ onPlaceClick, onListClick, onListSelect, onUserClick,
   const displayedNew = nearMe ? rankPlacesByDistance(newInRiyadh, userLoc.lat, userLoc.lng) : newInRiyadh;
   const displayedSuggested = nearMe ? rankPlacesByDistance(suggested, userLoc.lat, userLoc.lng) : suggested;
 
+  // The catalog fetch failing used to leave a silently empty home screen —
+  // indistinguishable from "there is nothing here". Surface it with a retry.
+  const [catalogFailed, setCatalogFailed] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+
   useEffect(() => {
-    getPlaces().then(setPlaces).catch(console.error);
+    setCatalogFailed(false);
+    getPlaces()
+      .then(p => { setPlaces(p); setCatalogFailed(false); })
+      .catch(() => setCatalogFailed(true));
     getPublicLists().then(setLists).catch(console.error);
     getActiveOffers().then(setOffers).catch(console.error);
-  }, []);
+  }, [reloadKey]);
 
   // "جديد في الرياض" — recently-discovered 4★+ places, straight from the
   // Google catalog (no admin curation).
@@ -141,9 +150,14 @@ export function HomePage({ onPlaceClick, onListClick, onListSelect, onUserClick,
       case "مطاعم":         return p.type === "مطعم";
       case "للعمل":         return p.isWorkFriendly;
       case "عائلي":         return p.isFamilyFriendly;
-      case "فطور":          return p.category.includes("فطور") || p.tags.some(t => t.includes("فطور"));
+      // category is admin-curated (empty on nearly every place) and 54% of
+      // places have no tags, so a tags-only match hid most of the catalog —
+      // fall back to the name, which the sync always fills.
+      case "فطور":          return p.category.includes("فطور") || p.tags.some(t => t.includes("فطور"))
+                                   || p.name.includes("فطور") || p.name.includes("بريكفاست")
+                                   || (p.nameEn ?? "").toLowerCase().includes("breakfast");
       case "جلسات خارجية":  return p.hasOutdoorSeating;
-      case "جديد":          return p.isNew;
+      case "جديد":          return isRecentlyAdded(p);
       default:              return true; // "الكل"
     }
   };
@@ -162,6 +176,17 @@ export function HomePage({ onPlaceClick, onListClick, onListSelect, onUserClick,
       />
 
       <div className="flex-1 overflow-y-auto pb-24" dir="rtl">
+        {catalogFailed && (
+          <div role="alert" className="mx-5 mt-14 mb-2 bg-danger-soft border border-border rounded-2xl px-4 py-3 flex items-center justify-between gap-3">
+            <p className="text-xs text-danger">تعذّر تحميل الأماكن — تأكد من اتصالك بالإنترنت</p>
+            <button
+              onClick={() => setReloadKey(k => k + 1)}
+              className="text-xs font-semibold text-accent whitespace-nowrap px-3 py-1.5 rounded-xl bg-card border border-border"
+            >
+              إعادة المحاولة
+            </button>
+          </div>
+        )}
         {/* Header */}
         <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm px-5 pt-14 pb-4">
           <div className="flex items-center justify-between mb-4">
@@ -186,10 +211,12 @@ export function HomePage({ onPlaceClick, onListClick, onListSelect, onUserClick,
               </button>
               {currentUser?.avatar_url && (
                 <img
-                  src={currentUser.avatar_url}
+                  src={sizedImage(currentUser.avatar_url, IMG.thumb)}
                   alt="profile"
                   className="w-10 h-10 rounded-full object-cover border-2 border-accent"
-                />
+          loading="lazy"
+          decoding="async"
+        />
               )}
             </motion.div>
           </div>
@@ -250,7 +277,7 @@ export function HomePage({ onPlaceClick, onListClick, onListSelect, onUserClick,
                       {...tappable(() => onListSelect(item.list.id), item.list.title)}
                       className="flex gap-3 p-3 bg-card border border-border rounded-2xl cursor-pointer hover:shadow-md transition-shadow"
                     >
-                      <img src={item.list.coverImage} alt="" className="w-14 h-14 rounded-xl object-cover flex-shrink-0" />
+                      <img src={sizedImage(item.list.coverImage, IMG.thumb)} alt="" className="w-14 h-14 rounded-xl object-cover flex-shrink-0" loading="lazy" decoding="async" />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs text-muted-foreground mb-0.5">{actor} أنشأ قائمة</p>
                         <h3 className="text-sm font-semibold text-foreground truncate">{item.list.title}</h3>
@@ -266,7 +293,7 @@ export function HomePage({ onPlaceClick, onListClick, onListSelect, onUserClick,
                     {...tappable(() => onPlaceClick(p.id), p.name)}
                     className="flex gap-3 p-3 bg-card border border-border rounded-2xl cursor-pointer hover:shadow-md transition-shadow"
                   >
-                    <img src={p.image} alt="" className="w-14 h-14 rounded-xl object-cover flex-shrink-0" />
+                    <img src={sizedImage(p.image, IMG.thumb)} alt="" className="w-14 h-14 rounded-xl object-cover flex-shrink-0" loading="lazy" decoding="async" />
                     <div className="flex-1 min-w-0">
                       <p className="text-xs text-muted-foreground mb-0.5">{actor} أوصى بـ</p>
                       <div className="flex items-center gap-1.5">
@@ -298,7 +325,9 @@ export function HomePage({ onPlaceClick, onListClick, onListSelect, onUserClick,
                 src="https://images.unsplash.com/photo-1722951812233-8fd37330dfb9?w=900&h=600&fit=crop&auto=format"
                 alt="الرياض"
                 className="w-full h-full object-cover"
-              />
+          loading="lazy"
+          decoding="async"
+        />
               <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
 
               <div className="absolute top-4 right-4">
@@ -362,8 +391,8 @@ export function HomePage({ onPlaceClick, onListClick, onListSelect, onUserClick,
               {displayedNew.slice(0, 12).map(place => (
                 <div key={place.id} {...tappable(() => onPlaceClick(place.id), place.name)} className="flex-shrink-0 w-40 cursor-pointer">
                   <div className="relative h-28 rounded-2xl overflow-hidden">
-                    <img src={place.image} alt={place.name} className="w-full h-full object-cover" />
-                    {place.isNew && (
+                    <img src={sizedImage(place.image, IMG.hero)} alt={place.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
+                    {isRecentlyAdded(place) && (
                       <span className="absolute top-2 right-2 text-[10px] px-1.5 py-0.5 rounded-full bg-accent text-white font-medium">جديد</span>
                     )}
                   </div>
@@ -384,7 +413,7 @@ export function HomePage({ onPlaceClick, onListClick, onListSelect, onUserClick,
               {displayedSuggested.slice(0, 12).map(place => (
                 <div key={place.id} {...tappable(() => onPlaceClick(place.id), place.name)} className="flex-shrink-0 w-40 cursor-pointer">
                   <div className="relative h-28 rounded-2xl overflow-hidden">
-                    <img src={place.image} alt={place.name} className="w-full h-full object-cover" />
+                    <img src={sizedImage(place.image, IMG.hero)} alt={place.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                   </div>
                   <h3 className="text-xs font-semibold text-foreground mt-2 truncate">{place.name}</h3>
                   <p className="text-[11px] text-muted-foreground">{place.district}{place.googleRating ? ` · ★ ${place.googleRating}` : ""}</p>
@@ -417,7 +446,7 @@ export function HomePage({ onPlaceClick, onListClick, onListSelect, onUserClick,
                     {...tappable(() => onPlaceClick(place.id), `${offer.title} — ${place.name}`)}
                   >
                     <div className="relative h-32">
-                      <img src={place.image} alt={place.name} className="w-full h-full object-cover" />
+                      <img src={sizedImage(place.image, IMG.hero)} alt={place.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                       {offer.discount && (
                         <div className="absolute top-2 right-2 bg-accent text-white text-xs font-bold px-2.5 py-1 rounded-lg shadow-sm">
                           {offer.discount} خصم
@@ -457,10 +486,12 @@ export function HomePage({ onPlaceClick, onListClick, onListSelect, onUserClick,
                 >
                   <div className="relative h-52 rounded-2xl overflow-hidden">
                     <img
-                      src={list.coverImage}
+                      src={sizedImage(list.coverImage, IMG.hero)}
                       alt={list.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
+          loading="lazy"
+          decoding="async"
+        />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/65 to-transparent" />
                     <div className="absolute bottom-3 right-3 left-3">
                       <h3 className="text-white text-sm font-semibold leading-tight">{list.title}</h3>

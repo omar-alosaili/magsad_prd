@@ -10,6 +10,8 @@ import { getPlaces } from "../lib/places";
 import { FEATURES } from "../lib/features";
 import { toast } from "../lib/toast";
 import { Button } from "./Button";
+import { sizedImage, IMG } from "../lib/types";
+import { useSheetA11y } from "./Sheet";
 
 type Props = {
   userId: string | null;
@@ -184,7 +186,7 @@ export function ListsPage({ userId, isCreator, onPlaceClick, savedPlaces, onSave
       <div className="flex-1 overflow-y-auto pb-24" dir="rtl">
         {/* Header */}
         <div className="relative h-56">
-          <img src={selectedList.coverImage} alt={selectedList.title} className="w-full h-full object-cover" />
+          <img src={sizedImage(selectedList.coverImage, IMG.hero)} alt={selectedList.title} className="w-full h-full object-cover" loading="lazy" decoding="async" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
           <button
             onClick={() => setSelectedList(null)}
@@ -284,7 +286,7 @@ export function ListsPage({ userId, isCreator, onPlaceClick, savedPlaces, onSave
                   className="flex gap-3 p-3 bg-card rounded-2xl border border-border cursor-pointer hover:shadow-md transition-shadow"
                   {...tappable(() => onPlaceClick(place.id), place.name)}
                 >
-                  <img src={place.image} alt={place.name} className="w-20 h-20 rounded-xl object-cover flex-shrink-0" />
+                  <img src={sizedImage(place.image, IMG.thumb)} alt={place.name} className="w-20 h-20 rounded-xl object-cover flex-shrink-0" loading="lazy" decoding="async" />
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-semibold text-foreground">{place.name}</h3>
                     <p className="text-xs text-muted-foreground mt-0.5">{place.type} · {place.district}</p>
@@ -303,6 +305,8 @@ export function ListsPage({ userId, isCreator, onPlaceClick, savedPlaces, onSave
       </div>
     );
   }
+
+  const createSheet = useSheetA11y(showCreateModal, () => setShowCreateModal(false), "قائمة جديدة");
 
   return (
     <div className="flex-1 overflow-y-auto pb-24" dir="rtl">
@@ -334,7 +338,7 @@ export function ListsPage({ userId, isCreator, onPlaceClick, savedPlaces, onSave
                   className="flex items-center gap-3 p-3 bg-card border border-border rounded-2xl cursor-pointer hover:shadow-md transition-shadow"
                   {...tappable(() => setSelectedList(list), list.title)}
                 >
-                  <img src={list.coverImage} alt={list.title} className="w-16 h-16 rounded-xl object-cover flex-shrink-0" />
+                  <img src={sizedImage(list.coverImage, IMG.thumb)} alt={list.title} className="w-16 h-16 rounded-xl object-cover flex-shrink-0" loading="lazy" decoding="async" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       {list.isPublic ? <Globe size={11} className="text-muted-foreground" /> : <Lock size={11} className="text-muted-foreground" />}
@@ -373,10 +377,12 @@ export function ListsPage({ userId, isCreator, onPlaceClick, savedPlaces, onSave
               >
                 <div className="relative h-36">
                   <img
-                    src={list.coverImage}
+                    src={sizedImage(list.coverImage, IMG.hero)}
                     alt={list.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
+          loading="lazy"
+          decoding="async"
+        />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                   {FEATURES.paidLists && list.isPaid && (
                     <div className="absolute top-3 left-3 flex items-center gap-1 bg-accent text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-sm">
@@ -427,7 +433,7 @@ export function ListsPage({ userId, isCreator, onPlaceClick, savedPlaces, onSave
 
       {/* Create List Modal */}
       {showCreateModal && (
-        <div className="absolute inset-0 z-50 flex items-end" dir="rtl">
+        <div className="absolute inset-0 z-50 flex items-end" dir="rtl" {...createSheet}>
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowCreateModal(false)} />
           <div className="relative w-full bg-card rounded-t-3xl p-6">
             <div className="flex items-center justify-between mb-5">

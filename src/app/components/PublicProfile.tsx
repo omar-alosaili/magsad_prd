@@ -6,6 +6,7 @@ import type { List, Place } from "./data";
 import { getFollowCounts, isFollowing, toggleFollowUser } from "../lib/profile";
 import { getPublicListsByUser, getReviewsByUser, getSavedPlacesByUser, type UserReview } from "../lib/social";
 import { toast } from "../lib/toast";
+import { sizedImage, IMG } from "../lib/types";
 
 type Props = {
   profile: Profile;
@@ -101,12 +102,12 @@ export function PublicProfile({ profile, viewerId, isAdmin, onBack, onPlaceClick
     <div className="flex-1 overflow-y-auto pb-24" dir="rtl">
       {/* Header */}
       <div className="bg-card border-b border-border px-5 pt-14 pb-5">
-        <button onClick={onBack} className="w-9 h-9 rounded-full bg-muted flex items-center justify-center mb-4">
+        <button onClick={onBack} aria-label="رجوع" className="w-9 h-9 rounded-full bg-muted flex items-center justify-center mb-4">
           <ArrowRight size={18} className="text-foreground" />
         </button>
         <div className="flex items-center gap-4">
           {profile.avatar_url ? (
-            <img src={profile.avatar_url} alt={profile.name} className="w-20 h-20 rounded-full object-cover border-2 border-accent" />
+            <img src={sizedImage(profile.avatar_url, IMG.thumb)} alt={profile.name} className="w-20 h-20 rounded-full object-cover border-2 border-accent" loading="lazy" decoding="async" />
           ) : (
             <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center border-2 border-accent text-2xl font-bold text-muted-foreground">
               {profile.name?.[0] ?? "؟"}
@@ -189,7 +190,7 @@ export function PublicProfile({ profile, viewerId, isAdmin, onBack, onPlaceClick
                   {...tappable(() => onListClick(list), list.title)}
                   className="flex gap-3 p-3 bg-card border border-border rounded-2xl cursor-pointer hover:shadow-md transition-shadow"
                 >
-                  <img src={list.coverImage} alt={list.title} className="w-16 h-16 rounded-xl object-cover flex-shrink-0" />
+                  <img src={sizedImage(list.coverImage, IMG.thumb)} alt={list.title} className="w-16 h-16 rounded-xl object-cover flex-shrink-0" loading="lazy" decoding="async" />
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-semibold text-foreground">{list.title}</h3>
                     <p className="text-xs text-muted-foreground mt-0.5">{list.placeCount} أماكن · {list.followers} متابع</p>
@@ -215,7 +216,7 @@ export function PublicProfile({ profile, viewerId, isAdmin, onBack, onPlaceClick
                   {...tappable(() => { if (r.place) onPlaceClick(r.place.id); }, r.place?.name)}
                   className="flex gap-3 p-3 bg-card border border-border rounded-2xl cursor-pointer hover:shadow-md transition-shadow"
                 >
-                  <img src={r.place!.image} alt={r.place!.name} className="w-16 h-16 rounded-xl object-cover flex-shrink-0" />
+                  <img src={sizedImage(r.place!.image, IMG.thumb)} alt={r.place!.name} className="w-16 h-16 rounded-xl object-cover flex-shrink-0" loading="lazy" decoding="async" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <h3 className="text-sm font-semibold text-foreground">{r.place!.name}</h3>
@@ -244,7 +245,7 @@ export function PublicProfile({ profile, viewerId, isAdmin, onBack, onPlaceClick
                   {...tappable(() => onPlaceClick(place.id), place.name)}
                   className="bg-card border border-border rounded-2xl overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
                 >
-                  <img src={place.image} alt={place.name} className="w-full h-28 object-cover" />
+                  <img src={sizedImage(place.image, IMG.card)} alt={place.name} className="w-full h-28 object-cover" loading="lazy" decoding="async" />
                   <div className="p-2.5">
                     <h3 className="text-xs font-semibold text-foreground truncate">{place.name}</h3>
                     <p className="text-xs text-muted-foreground mt-0.5">{place.district}</p>

@@ -71,6 +71,7 @@ export type PlaceRow = {
   quality_flags: string[];
   status: "published" | "search_only" | "quarantined" | "retired";
   brand: string | null;
+  created_at?: string;
 };
 
 export type ListRow = {
@@ -111,6 +112,21 @@ export type ReviewRow = {
 export const PLACE_IMAGE_FALLBACK =
   "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=800&h=600&fit=crop&auto=format";
 
+// Stored place photos are 800px-wide JPEGs (~165 KB each), so a 15-card feed
+// pulled ~2.4 MB of imagery — several times the weight of all our code and API
+// traffic combined. Supabase serves on-the-fly resizes from the same object,
+// so asking for the display width cuts 66-85% with no re-sync and no extra
+// storage. Widths are the CSS size at ~2x for retina.
+export const IMG = { thumb: 200, card: 430, hero: 860 } as const;
+
+export function sizedImage(url: string, width: number, quality = 70): string {
+  // Only our own storage objects can be transformed; external URLs (the
+  // Unsplash fallback, anything an admin pasted) pass through untouched.
+  if (!url.includes("/storage/v1/object/public/")) return url;
+  const base = url.replace("/storage/v1/object/public/", "/storage/v1/render/image/public/");
+  return `${base}${base.includes("?") ? "&" : "?"}width=${width}&quality=${quality}`;
+}
+
 export function mapPlaceRow(row: PlaceRow): Place {
   return {
     id: row.id,
@@ -149,6 +165,7 @@ export function mapPlaceRow(row: PlaceRow): Place {
     qualityFlags: row.quality_flags ?? [],
     status: row.status ?? "published",
     brand: row.brand ?? null,
+    createdAt: row.created_at ?? "",
   };
 }
 

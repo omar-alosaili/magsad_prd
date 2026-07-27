@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 import { Search, SlidersHorizontal, X, Wifi, Users, Baby, Trees, Map, List, MapPin, UtensilsCrossed, Star } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { APIProvider, Map as GoogleMap, AdvancedMarker } from "@vis.gl/react-google-maps";
-import { displayRating, placeMatchesQuery, type Place } from "./data";
+import { displayRating, placeMatchesQuery, isRecentlyAdded, type Place } from "./data";
 import { getPlaces } from "../lib/places";
 import { searchProfiles } from "../lib/profile";
 import { searchFood, type FoodResult } from "../lib/foodSearch";
 import { tappable } from "../lib/a11y";
 import type { Profile } from "../lib/types";
 import { PlaceCard } from "./PlaceCard";
+import { sizedImage, IMG } from "../lib/types";
 
 // Real Google Map when a browser key is configured; the styled mock map
 // remains as a keyless fallback.
@@ -148,7 +149,7 @@ export function ExplorePage({ onPlaceClick, onUserClick, currentUserId, savedPla
     if (filters.isKidsFriendly && !p.isKidsFriendly) return false;
     if (filters.hasOutdoorSeating && !p.hasOutdoorSeating) return false;
     if (filters.isOpen && !p.isOpen) return false;
-    if (filters.isNew && !p.isNew) return false;
+    if (filters.isNew && !isRecentlyAdded(p)) return false;
     if (filters.priceLevel && p.priceLevel !== filters.priceLevel) return false;
     return true;
   });
@@ -332,7 +333,7 @@ export function ExplorePage({ onPlaceClick, onUserClick, currentUserId, savedPla
                   >
                     <div className="flex gap-3">
                       <div className="relative flex-shrink-0">
-                        <img src={r.place.image} alt={r.place.name} className="w-20 h-20 rounded-xl object-cover" />
+                        <img src={sizedImage(r.place.image, IMG.thumb)} alt={r.place.name} className="w-20 h-20 rounded-xl object-cover" loading="lazy" decoding="async" />
                         <span className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
                           {i + 1}
                         </span>
@@ -401,7 +402,7 @@ export function ExplorePage({ onPlaceClick, onUserClick, currentUserId, savedPla
                   className="flex items-center gap-3 p-3 bg-card border border-border rounded-2xl text-right hover:shadow-md transition-shadow"
                 >
                   {u.avatar_url ? (
-                    <img src={u.avatar_url} alt={u.name} className="w-12 h-12 rounded-full object-cover flex-shrink-0" />
+                    <img src={sizedImage(u.avatar_url, IMG.thumb)} alt={u.name} className="w-12 h-12 rounded-full object-cover flex-shrink-0" loading="lazy" decoding="async" />
                   ) : (
                     <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center flex-shrink-0 text-base font-bold text-muted-foreground">
                       {u.name?.[0] ?? "؟"}
@@ -599,7 +600,7 @@ export function ExplorePage({ onPlaceClick, onUserClick, currentUserId, savedPla
                       {isSelected ? (
                         <div className="relative flex flex-col items-center" dir="rtl">
                           <div className="px-2.5 py-1.5 rounded-2xl shadow-lg border-2 flex items-center gap-1.5 bg-primary text-white border-primary">
-                            <img src={place.image} alt="" className="w-5 h-5 rounded-full object-cover" />
+                            <img src={sizedImage(place.image, IMG.thumb)} alt="" className="w-5 h-5 rounded-full object-cover" loading="lazy" decoding="async" />
                             <span className="text-xs font-bold whitespace-nowrap">{place.name}</span>
                           </div>
                           <div className="w-2 h-2 rotate-45 mt-[-4px] bg-primary" />
@@ -693,7 +694,7 @@ export function ExplorePage({ onPlaceClick, onUserClick, currentUserId, savedPla
                           ? "bg-white text-foreground border-white"
                           : "bg-gray-100 text-gray-500 border-gray-200"
                       }`}>
-                        <img src={place.image} alt="" className="w-5 h-5 rounded-full object-cover" />
+                        <img src={sizedImage(place.image, IMG.thumb)} alt="" className="w-5 h-5 rounded-full object-cover" loading="lazy" decoding="async" />
                         <span className="text-xs font-bold whitespace-nowrap">{place.name}</span>
                       </div>
                       <div className={`w-2 h-2 rotate-45 mt-[-4px] ${isSelected ? "bg-primary" : "bg-white"}`} />
@@ -720,7 +721,7 @@ export function ExplorePage({ onPlaceClick, onUserClick, currentUserId, savedPla
                   className="flex gap-3 p-4 cursor-pointer"
                   {...tappable(() => onPlaceClick(selectedPlace.id), selectedPlace.name)}
                 >
-                  <img src={selectedPlace.image} alt={selectedPlace.name} className="w-20 h-20 rounded-2xl object-cover flex-shrink-0" />
+                  <img src={sizedImage(selectedPlace.image, IMG.thumb)} alt={selectedPlace.name} className="w-20 h-20 rounded-2xl object-cover flex-shrink-0" loading="lazy" decoding="async" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between">
                       <div>

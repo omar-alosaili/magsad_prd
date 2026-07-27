@@ -33,6 +33,8 @@ export type Place = {
   qualityFlags: string[];
   status: "published" | "search_only" | "quarantined" | "retired";
   brand: string | null;
+  // When our sync first saw this place — drives the «جديد» badge (isRecentlyAdded)
+  createdAt: string;
 };
 
 // Latin aliases for the normalized (Arabic) brand column, so "Starbucks"
@@ -59,6 +61,19 @@ export function placeMatchesQuery(p: Place, query: string): boolean {
     return BRAND_ALIASES.some(([latin, ar]) => p.brand === ar && (latin.includes(ql) || ql.includes(latin)));
   }
   return false;
+}
+
+// "New" is derived from when we first saw the place, NOT from the stored
+// is_new flag: that flag was true on 100% of the catalog because the only
+// thing that cleared it ran inside the monthly sync AND filtered
+// source='google', while the column defaults to 'manual'. A read-time rule
+// can't drift, needs no cron, and covers admin-added places too.
+export const NEW_WINDOW_DAYS = 14;
+
+export function isRecentlyAdded(p: Place): boolean {
+  if (!p.createdAt) return false;
+  const age = Date.now() - new Date(p.createdAt).getTime();
+  return age >= 0 && age < NEW_WINDOW_DAYS * 24 * 60 * 60 * 1000;
 }
 
 // Discovery surfaces (جديد في الرياض، مقترح لك، promotions) may only show

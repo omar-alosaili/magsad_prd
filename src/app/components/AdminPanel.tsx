@@ -23,6 +23,7 @@ import {
   type VerificationRequest, type Report, type AuditLogEntry, type AdminPayoutRequest,
   type AdminUser, type MonetizationStats,
 } from "../lib/admin";
+import { useSheetA11y } from "./Sheet";
 import {
   getPlaceUpdates, getPendingCounts, approvePlaceUpdate, rejectPlaceUpdate,
   approveAllRatingUpdates, collectHighSignalNewPlaces, approveNewPlacesBulk,
@@ -258,15 +259,15 @@ export function AdminPanel({ userId, onBack }: Props) {
   const [editCategory, setEditCategory] = useState("");
 
   const loadOverview = (expanded = false) => {
-    getOverviewStats().then(setStats).catch(console.error);
-    getAuditLog(expanded ? 100 : 6).then(setAuditLog).catch(console.error);
+    getOverviewStats().then(setStats).catch(() => toast.error("تعذّر تحميل الإحصائيات — تحقق من اتصالك"));
+    getAuditLog(expanded ? 100 : 6).then(setAuditLog).catch(() => toast.error("تعذّر تحميل سجل النشاط"));
   };
-  const loadPlaces = () => getPlaces(true).then(setPlaces).catch(console.error);
-  const loadVerify = () => getVerificationRequests().then(setVerifyRequests).catch(console.error);
-  const loadReports = () => getReports().then(setReports).catch(console.error);
-  const loadPayouts = () => getPayoutRequests().then(setPayoutRequests).catch(console.error);
-  const loadMonetization = () => getMonetizationStats().then(setMonetization).catch(console.error);
-  const loadUsers = (q: string) => searchUsers(q).then(setUsers).catch(console.error);
+  const loadPlaces = () => getPlaces(true).then(setPlaces).catch(() => toast.error("تعذّر تحميل الأماكن — حاول مجدداً"));
+  const loadVerify = () => getVerificationRequests().then(setVerifyRequests).catch(() => toast.error("تعذّر تحميل طلبات التوثيق"));
+  const loadReports = () => getReports().then(setReports).catch(() => toast.error("تعذّر تحميل البلاغات"));
+  const loadPayouts = () => getPayoutRequests().then(setPayoutRequests).catch(() => toast.error("تعذّر تحميل طلبات السحب"));
+  const loadMonetization = () => getMonetizationStats().then(setMonetization).catch(() => toast.error("تعذّر تحميل بيانات الإيرادات"));
+  const loadUsers = (q: string) => searchUsers(q).then(setUsers).catch(() => toast.error("تعذّر البحث عن المستخدمين"));
 
   useEffect(() => {
     loadOverview();
@@ -435,11 +436,15 @@ export function AdminPanel({ userId, onBack }: Props) {
     action.then(() => { loadReports(); loadOverview(); toast.success(status === "resolved" ? "تم حل البلاغ ✓" : "تم تجاهل البلاغ ✓"); }).catch(() => toast.error("تعذّرت معالجة البلاغ — حاول مجدداً"));
   };
 
+  const sheet1 = useSheetA11y(!!assignTarget, () => setAssignTarget(null), "إسناد مكان لمالك");
+  const sheet2 = useSheetA11y(showAddPlaceModal, () => setShowAddPlaceModal(false), "إضافة مكان");
+  const sheet3 = useSheetA11y(!!editingPlace, () => setEditingPlace(null), "تعديل المكان");
+
   return (
     <div className="flex-1 overflow-y-auto pb-24" dir="rtl">
       <div className="sticky top-0 z-20 bg-primary/95 backdrop-blur-sm px-5 pt-14 pb-4">
         <div className="flex items-center gap-3 mb-4">
-          <button onClick={onBack} className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center">
+          <button onClick={onBack} aria-label="رجوع" className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center">
             <ArrowRight size={18} className="text-white" />
           </button>
           <div>
@@ -1156,7 +1161,7 @@ export function AdminPanel({ userId, onBack }: Props) {
 
       {/* Assign Place Ownership Modal */}
       {assignTarget && (
-        <div className="absolute inset-0 z-50 flex items-end" dir="rtl">
+        <div className="absolute inset-0 z-50 flex items-end" dir="rtl" {...sheet1}>
           <div className="absolute inset-0 bg-black/40" onClick={() => setAssignTarget(null)} />
           <div className="relative w-full bg-card rounded-t-3xl p-6 max-h-[75vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
@@ -1201,7 +1206,7 @@ export function AdminPanel({ userId, onBack }: Props) {
 
       {/* Add Place Modal */}
       {showAddPlaceModal && (
-        <div className="absolute inset-0 z-50 flex items-end" dir="rtl">
+        <div className="absolute inset-0 z-50 flex items-end" dir="rtl" {...sheet2}>
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowAddPlaceModal(false)} />
           <div className="relative w-full bg-card rounded-t-3xl p-6 max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-5">
@@ -1255,7 +1260,7 @@ export function AdminPanel({ userId, onBack }: Props) {
 
       {/* Edit Place Modal */}
       {editingPlace && (
-        <div className="absolute inset-0 z-50 flex items-end" dir="rtl">
+        <div className="absolute inset-0 z-50 flex items-end" dir="rtl" {...sheet3}>
           <div className="absolute inset-0 bg-black/40" onClick={() => setEditingPlace(null)} />
           <div className="relative w-full bg-card rounded-t-3xl p-6">
             <div className="flex items-center justify-between mb-5">

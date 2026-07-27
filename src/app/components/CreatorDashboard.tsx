@@ -70,7 +70,7 @@ export function CreatorDashboard({ userId, onBack }: Props) {
     <div className="flex-1 overflow-y-auto pb-24" dir="rtl">
       <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm px-5 pt-14 pb-4">
         <div className="flex items-center gap-3">
-          <button onClick={onBack} className="w-9 h-9 rounded-full bg-card border border-border flex items-center justify-center">
+          <button onClick={onBack} aria-label="رجوع" className="w-9 h-9 rounded-full bg-card border border-border flex items-center justify-center">
             <ArrowRight size={18} className="text-foreground" />
           </button>
           <div>

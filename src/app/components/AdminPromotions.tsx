@@ -9,6 +9,7 @@ import { getPlaces } from "../lib/places";
 import { toast } from "../lib/toast";
 import { Button } from "./Button";
 import type { Place } from "./data";
+import { useSheetA11y } from "./Sheet";
 
 type Props = { userId: string; onReload: () => void };
 
@@ -201,8 +202,10 @@ function ConfigModal({ promo, onClose, onSave }: {
   const [priority, setPriority] = useState(String(promo.priority));
   const [endsAt, setEndsAt] = useState(promo.endsAt ? promo.endsAt.slice(0, 10) : "");
 
+  const promoSheet1 = useSheetA11y(true, onClose, "ضبط الترويج");
+
   return (
-    <div className="absolute inset-0 z-50 flex items-end" dir="rtl">
+    <div className="absolute inset-0 z-50 flex items-end" dir="rtl" {...promoSheet1}>
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative w-full bg-card rounded-t-3xl p-6 max-h-[88vh] overflow-y-auto">
         <h3 className="text-base font-bold mb-5">ضبط الترويج — {promo.placeName}</h3>
@@ -260,8 +263,10 @@ function PublishModal({ places, existing, onClose, onPublish }: {
     : [];
   const duplicate = selected ? existing.has(selected.id + placement) : false;
 
+  const promoSheet2 = useSheetA11y(true, onClose, "نشر مكان في الاكتشاف");
+
   return (
-    <div className="absolute inset-0 z-50 flex items-end" dir="rtl">
+    <div className="absolute inset-0 z-50 flex items-end" dir="rtl" {...promoSheet2}>
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative w-full bg-card rounded-t-3xl p-6 max-h-[88vh] overflow-y-auto">
         <h3 className="text-base font-bold mb-5">نشر مكان في الاكتشاف</h3>
