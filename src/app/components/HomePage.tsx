@@ -391,7 +391,7 @@ export function HomePage({ onPlaceClick, onListClick, onListSelect, onUserClick,
               {displayedNew.slice(0, 12).map(place => (
                 <div key={place.id} {...tappable(() => onPlaceClick(place.id), place.name)} className="flex-shrink-0 w-40 cursor-pointer">
                   <div className="relative h-28 rounded-2xl overflow-hidden">
-                    <img src={sizedImage(place.image, IMG.hero)} alt={place.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
+                    <img src={sizedImage(place.image, IMG.card)} alt={place.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                     {isRecentlyAdded(place) && (
                       <span className="absolute top-2 right-2 text-[10px] px-1.5 py-0.5 rounded-full bg-accent text-white font-medium">جديد</span>
                     )}
@@ -413,7 +413,7 @@ export function HomePage({ onPlaceClick, onListClick, onListSelect, onUserClick,
               {displayedSuggested.slice(0, 12).map(place => (
                 <div key={place.id} {...tappable(() => onPlaceClick(place.id), place.name)} className="flex-shrink-0 w-40 cursor-pointer">
                   <div className="relative h-28 rounded-2xl overflow-hidden">
-                    <img src={sizedImage(place.image, IMG.hero)} alt={place.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
+                    <img src={sizedImage(place.image, IMG.card)} alt={place.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                   </div>
                   <h3 className="text-xs font-semibold text-foreground mt-2 truncate">{place.name}</h3>
                   <p className="text-[11px] text-muted-foreground">{place.district}{place.googleRating ? ` · ★ ${place.googleRating}` : ""}</p>
@@ -446,7 +446,7 @@ export function HomePage({ onPlaceClick, onListClick, onListSelect, onUserClick,
                     {...tappable(() => onPlaceClick(place.id), `${offer.title} — ${place.name}`)}
                   >
                     <div className="relative h-32">
-                      <img src={sizedImage(place.image, IMG.hero)} alt={place.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
+                      <img src={sizedImage(place.image, IMG.card)} alt={place.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                       {offer.discount && (
                         <div className="absolute top-2 right-2 bg-accent text-white text-xs font-bold px-2.5 py-1 rounded-lg shadow-sm">
                           {offer.discount} خصم
@@ -486,7 +486,7 @@ export function HomePage({ onPlaceClick, onListClick, onListSelect, onUserClick,
                 >
                   <div className="relative h-52 rounded-2xl overflow-hidden">
                     <img
-                      src={sizedImage(list.coverImage, IMG.hero)}
+                      src={sizedImage(list.coverImage, IMG.card)}
                       alt={list.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           loading="lazy"
