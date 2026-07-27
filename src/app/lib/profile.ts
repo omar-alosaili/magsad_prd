@@ -60,9 +60,9 @@ export async function uploadAvatar(userId: string, file: File): Promise<string> 
     contentType: file.type || "image/jpeg",
   });
   if (error) throw error;
-  // Only after the new file is safely stored — a failed cleanup costs an
-  // orphan, a premature one would lose the user's picture.
-  await deleteAvatarFiles(userId, path).catch(() => {});
+  // Deliberately NOT cleaning up here: the profile row still points at the
+  // previous file until the user presses save, and they may cancel. Cleanup
+  // happens after a successful save (see ProfilePage.saveProfileEdit).
   const { data } = supabase.storage.from("user-photos").getPublicUrl(path);
   return data.publicUrl;
 }

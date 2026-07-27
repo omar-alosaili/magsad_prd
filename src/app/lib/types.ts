@@ -124,7 +124,11 @@ export function sizedImage(url: string, width: number, quality = 70): string {
   // Unsplash fallback, anything an admin pasted) pass through untouched.
   if (!url.includes("/storage/v1/object/public/")) return url;
   const base = url.replace("/storage/v1/object/public/", "/storage/v1/render/image/public/");
-  return `${base}${base.includes("?") ? "&" : "?"}width=${width}&quality=${quality}`;
+  // resize=contain is REQUIRED: passing width alone makes the transformer
+  // center-crop to that width while keeping the original height (an 800x600
+  // photo came back 430x600 — the middle slice), which silently mangled every
+  // image. contain scales the whole frame and is smaller on the wire too.
+  return `${base}${base.includes("?") ? "&" : "?"}width=${width}&resize=contain&quality=${quality}`;
 }
 
 export function mapPlaceRow(row: PlaceRow): Place {

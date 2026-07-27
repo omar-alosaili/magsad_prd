@@ -189,6 +189,8 @@ export function ListsPage({ userId, isCreator, onPlaceClick, savedPlaces, onSave
     }).catch(() => toast.error("تعذّر حذف القائمة — حاول مجدداً"));
   };
 
+  const createSheet = useSheetA11y(showCreateModal, () => setShowCreateModal(false), "قائمة جديدة");
+
   if (selectedList) {
     const listPlaces = places.filter(p => selectedList.placeIds.includes(p.id));
     const isFollowing = followedLists.has(selectedList.id);
@@ -317,7 +319,6 @@ export function ListsPage({ userId, isCreator, onPlaceClick, savedPlaces, onSave
     );
   }
 
-  const createSheet = useSheetA11y(showCreateModal, () => setShowCreateModal(false), "قائمة جديدة");
 
   return (
     <div className="flex-1 overflow-y-auto pb-24" dir="rtl">

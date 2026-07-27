@@ -158,9 +158,10 @@ export function ProfilePage({ userId, currentUser, onPlaceClick, onListClick, on
       personalization_opt_in: editPersonalization,
     })
       .then(() => {
-        // Picture removed: drop the stored file too, or it lingers in the
-        // bucket forever with nothing pointing at it.
-        if (!editAvatarUrl) deleteAvatarFiles(userId).catch(() => {});
+        // The row now points at the saved URL, so every OTHER avatar file for
+        // this user is safe to drop (covers both replace and remove).
+        const keep = editAvatarUrl ? `${userId}/${editAvatarUrl.split("/").pop()?.split("?")[0]}` : undefined;
+        deleteAvatarFiles(userId, keep).catch(() => {});
         setShowEditModal(false); onProfileUpdated?.(); toast.success("تم حفظ ملفك الشخصي");
       })
       .catch(() => toast.error("تعذّر حفظ الملف — حاول مجدداً"))
@@ -178,6 +179,8 @@ export function ProfilePage({ userId, currentUser, onPlaceClick, onListClick, on
       .then(() => toast.success("تم نسخ رابط الملف"))
       .catch(() => toast.error("تعذّر نسخ الرابط"));
   };
+
+  const editSheet = useSheetA11y(showEditModal, () => setShowEditModal(false), "تعديل الملف");
 
   if (!currentUser) {
     return (
@@ -202,7 +205,6 @@ export function ProfilePage({ userId, currentUser, onPlaceClick, onListClick, on
     );
   }
 
-  const editSheet = useSheetA11y(showEditModal, () => setShowEditModal(false), "تعديل الملف");
 
   return (
     <div className="flex-1 overflow-y-auto pb-24" dir="rtl">
