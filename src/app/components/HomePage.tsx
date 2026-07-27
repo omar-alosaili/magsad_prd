@@ -16,7 +16,7 @@ import { getActivePromotions } from "../lib/promotions";
 import type { Profile } from "../lib/types";
 import { NotificationsPanel } from "./NotificationsPanel";
 import { FeaturedHero } from "./FeaturedHero";
-import { sizedImage, IMG, PLACE_IMAGE_FALLBACK } from "../lib/types";
+import { sizedImage, IMG, PLACE_IMAGE_FALLBACK, originalImage } from "../lib/types";
 
 type Props = {
   onPlaceClick: (id: string) => void;
@@ -77,7 +77,7 @@ export function HomePage({ onPlaceClick, onListClick, onListSelect, onUserClick,
     let cancelled = false;
     getNewInRiyadh().then(p => { if (!cancelled) setNewInRiyadh(p); }).catch(console.error);
     return () => { cancelled = true; };
-  }, []);
+  }, [reloadKey]);
 
   // Featured hero ("وين مقصدك اليوم؟") — admin-curated places published into
   // the `home_featured` placement, priority-ordered. Resolve each to the
@@ -284,7 +284,7 @@ export function HomePage({ onPlaceClick, onListClick, onListSelect, onUserClick,
                       {...tappable(() => onListSelect(item.list.id), item.list.title)}
                       className="flex gap-3 p-3 bg-card border border-border rounded-2xl cursor-pointer hover:shadow-md transition-shadow"
                     >
-                      <img src={sizedImage(item.list.coverImage, IMG.thumb)} alt="" className="w-14 h-14 rounded-xl object-cover flex-shrink-0" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }} />
+                      <img src={sizedImage(item.list.coverImage, IMG.thumb)} alt="" className="w-14 h-14 rounded-xl object-cover flex-shrink-0" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; const o = originalImage(t.src); if (t.src !== o) { t.src = o; } else if (t.src !== PLACE_IMAGE_FALLBACK) { t.src = PLACE_IMAGE_FALLBACK; } }} />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs text-muted-foreground mb-0.5">{actor} أنشأ قائمة</p>
                         <h3 className="text-sm font-semibold text-foreground truncate">{item.list.title}</h3>
@@ -300,7 +300,7 @@ export function HomePage({ onPlaceClick, onListClick, onListSelect, onUserClick,
                     {...tappable(() => onPlaceClick(p.id), p.name)}
                     className="flex gap-3 p-3 bg-card border border-border rounded-2xl cursor-pointer hover:shadow-md transition-shadow"
                   >
-                    <img src={sizedImage(p.image, IMG.thumb)} alt="" className="w-14 h-14 rounded-xl object-cover flex-shrink-0" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }} />
+                    <img src={sizedImage(p.image, IMG.thumb)} alt="" className="w-14 h-14 rounded-xl object-cover flex-shrink-0" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; const o = originalImage(t.src); if (t.src !== o) { t.src = o; } else if (t.src !== PLACE_IMAGE_FALLBACK) { t.src = PLACE_IMAGE_FALLBACK; } }} />
                     <div className="flex-1 min-w-0">
                       <p className="text-xs text-muted-foreground mb-0.5">{actor} أوصى بـ</p>
                       <div className="flex items-center gap-1.5">
@@ -334,7 +334,7 @@ export function HomePage({ onPlaceClick, onListClick, onListSelect, onUserClick,
                 className="w-full h-full object-cover"
           loading="lazy"
           decoding="async"
-          onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }}
+          onError={e => { const t = e.currentTarget; const o = originalImage(t.src); if (t.src !== o) { t.src = o; } else if (t.src !== PLACE_IMAGE_FALLBACK) { t.src = PLACE_IMAGE_FALLBACK; } }}
         />
               <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
 
@@ -399,7 +399,7 @@ export function HomePage({ onPlaceClick, onListClick, onListSelect, onUserClick,
               {displayedNew.slice(0, 12).map(place => (
                 <div key={place.id} {...tappable(() => onPlaceClick(place.id), place.name)} className="flex-shrink-0 w-40 cursor-pointer">
                   <div className="relative h-28 rounded-2xl overflow-hidden">
-                    <img src={sizedImage(place.image, IMG.card)} alt={place.name} className="w-full h-full object-cover" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }} />
+                    <img src={sizedImage(place.image, IMG.card)} alt={place.name} className="w-full h-full object-cover" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; const o = originalImage(t.src); if (t.src !== o) { t.src = o; } else if (t.src !== PLACE_IMAGE_FALLBACK) { t.src = PLACE_IMAGE_FALLBACK; } }} />
                     {isRecentlyAdded(place) && (
                       <span className="absolute top-2 right-2 text-[10px] px-1.5 py-0.5 rounded-full bg-accent text-white font-medium">جديد</span>
                     )}
@@ -421,7 +421,7 @@ export function HomePage({ onPlaceClick, onListClick, onListSelect, onUserClick,
               {displayedSuggested.slice(0, 12).map(place => (
                 <div key={place.id} {...tappable(() => onPlaceClick(place.id), place.name)} className="flex-shrink-0 w-40 cursor-pointer">
                   <div className="relative h-28 rounded-2xl overflow-hidden">
-                    <img src={sizedImage(place.image, IMG.card)} alt={place.name} className="w-full h-full object-cover" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }} />
+                    <img src={sizedImage(place.image, IMG.card)} alt={place.name} className="w-full h-full object-cover" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; const o = originalImage(t.src); if (t.src !== o) { t.src = o; } else if (t.src !== PLACE_IMAGE_FALLBACK) { t.src = PLACE_IMAGE_FALLBACK; } }} />
                   </div>
                   <h3 className="text-xs font-semibold text-foreground mt-2 truncate">{place.name}</h3>
                   <p className="text-[11px] text-muted-foreground">{place.district}{place.googleRating ? ` · ★ ${place.googleRating}` : ""}</p>
@@ -454,7 +454,7 @@ export function HomePage({ onPlaceClick, onListClick, onListSelect, onUserClick,
                     {...tappable(() => onPlaceClick(place.id), `${offer.title} — ${place.name}`)}
                   >
                     <div className="relative h-32">
-                      <img src={sizedImage(place.image, IMG.card)} alt={place.name} className="w-full h-full object-cover" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }} />
+                      <img src={sizedImage(place.image, IMG.card)} alt={place.name} className="w-full h-full object-cover" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; const o = originalImage(t.src); if (t.src !== o) { t.src = o; } else if (t.src !== PLACE_IMAGE_FALLBACK) { t.src = PLACE_IMAGE_FALLBACK; } }} />
                       {offer.discount && (
                         <div className="absolute top-2 right-2 bg-accent text-white text-xs font-bold px-2.5 py-1 rounded-lg shadow-sm">
                           {offer.discount} خصم
@@ -499,7 +499,7 @@ export function HomePage({ onPlaceClick, onListClick, onListSelect, onUserClick,
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           loading="lazy"
           decoding="async"
-          onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }}
+          onError={e => { const t = e.currentTarget; const o = originalImage(t.src); if (t.src !== o) { t.src = o; } else if (t.src !== PLACE_IMAGE_FALLBACK) { t.src = PLACE_IMAGE_FALLBACK; } }}
         />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/65 to-transparent" />
                     <div className="absolute bottom-3 right-3 left-3">

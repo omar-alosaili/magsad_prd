@@ -6,7 +6,7 @@ import { getActiveOffers } from "../lib/offers";
 import { getPlaces } from "../lib/places";
 import { updateProfile } from "../lib/profile";
 import { toast } from "../lib/toast";
-import { PLACE_IMAGE_FALLBACK } from "../lib/types";
+import { PLACE_IMAGE_FALLBACK, originalImage } from "../lib/types";
 
 type Props = {
   userId: string | null;
@@ -82,7 +82,7 @@ export function OffersPage({ userId, onPlaceClick }: Props) {
                   src={place.image}
                   alt={place.name}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }}
+          onError={e => { const t = e.currentTarget; const o = originalImage(t.src); if (t.src !== o) { t.src = o; } else if (t.src !== PLACE_IMAGE_FALLBACK) { t.src = PLACE_IMAGE_FALLBACK; } }}
         />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 

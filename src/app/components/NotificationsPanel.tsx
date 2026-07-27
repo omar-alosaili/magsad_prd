@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { X, Bell, Bookmark, Heart, Shield, Tag } from "lucide-react";
 import { getNotifications, markAllRead, markRead } from "../lib/notifications";
 import { toast } from "../lib/toast";
-import { PLACE_IMAGE_FALLBACK, type Notification, type NotificationType } from "../lib/types";
+import { PLACE_IMAGE_FALLBACK, type Notification, type NotificationType, originalImage } from "../lib/types";
 
 type Props = {
   open: boolean;
@@ -115,7 +115,7 @@ export function NotificationsPanel({ open, onClose, userId, onPlaceClick }: Prop
                           src={notif.image}
                           alt=""
                           className="w-12 h-12 rounded-2xl object-cover"
-          onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }}
+          onError={e => { const t = e.currentTarget; const o = originalImage(t.src); if (t.src !== o) { t.src = o; } else if (t.src !== PLACE_IMAGE_FALLBACK) { t.src = PLACE_IMAGE_FALLBACK; } }}
         />
                       )}
                       <div className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full ${ICON_BG[notif.type].bg} flex items-center justify-center border-2 border-background`}>

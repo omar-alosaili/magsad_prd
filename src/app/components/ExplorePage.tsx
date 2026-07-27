@@ -9,7 +9,7 @@ import { searchFood, type FoodResult } from "../lib/foodSearch";
 import { tappable } from "../lib/a11y";
 import type { Profile } from "../lib/types";
 import { PlaceCard } from "./PlaceCard";
-import { sizedImage, IMG, PLACE_IMAGE_FALLBACK } from "../lib/types";
+import { sizedImage, IMG, PLACE_IMAGE_FALLBACK, originalImage } from "../lib/types";
 
 // Real Google Map when a browser key is configured; the styled mock map
 // remains as a keyless fallback.
@@ -351,7 +351,7 @@ export function ExplorePage({ onPlaceClick, onUserClick, currentUserId, savedPla
                   >
                     <div className="flex gap-3">
                       <div className="relative flex-shrink-0">
-                        <img src={sizedImage(r.place.image, IMG.thumb)} alt={r.place.name} className="w-20 h-20 rounded-xl object-cover" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }} />
+                        <img src={sizedImage(r.place.image, IMG.thumb)} alt={r.place.name} className="w-20 h-20 rounded-xl object-cover" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; const o = originalImage(t.src); if (t.src !== o) { t.src = o; } else if (t.src !== PLACE_IMAGE_FALLBACK) { t.src = PLACE_IMAGE_FALLBACK; } }} />
                         <span className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
                           {i + 1}
                         </span>
@@ -732,7 +732,7 @@ export function ExplorePage({ onPlaceClick, onUserClick, currentUserId, savedPla
                   className="flex gap-3 p-4 cursor-pointer"
                   {...tappable(() => onPlaceClick(selectedPlace.id), selectedPlace.name)}
                 >
-                  <img src={sizedImage(selectedPlace.image, IMG.thumb)} alt={selectedPlace.name} className="w-20 h-20 rounded-2xl object-cover flex-shrink-0" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }} />
+                  <img src={sizedImage(selectedPlace.image, IMG.thumb)} alt={selectedPlace.name} className="w-20 h-20 rounded-2xl object-cover flex-shrink-0" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; const o = originalImage(t.src); if (t.src !== o) { t.src = o; } else if (t.src !== PLACE_IMAGE_FALLBACK) { t.src = PLACE_IMAGE_FALLBACK; } }} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between">
                       <div>

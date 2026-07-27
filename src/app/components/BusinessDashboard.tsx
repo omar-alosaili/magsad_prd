@@ -10,7 +10,7 @@ import { updateProfile } from "../lib/profile";
 import { toast } from "../lib/toast";
 import { Button } from "./Button";
 import { useSheetA11y } from "./Sheet";
-import { PLACE_IMAGE_FALLBACK } from "../lib/types";
+import { PLACE_IMAGE_FALLBACK, originalImage } from "../lib/types";
 
 type Props = { userId: string; placeId: string; onBack: () => void };
 
@@ -216,7 +216,7 @@ export function BusinessDashboard({ userId, placeId, onBack }: Props) {
           <>
             {/* Place Card */}
             <div className="bg-card border border-border rounded-2xl overflow-hidden mb-5">
-              <img src={place.image} alt={place.name} className="w-full h-36 object-cover" onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }} />
+              <img src={place.image} alt={place.name} className="w-full h-36 object-cover" onError={e => { const t = e.currentTarget; const o = originalImage(t.src); if (t.src !== o) { t.src = o; } else if (t.src !== PLACE_IMAGE_FALLBACK) { t.src = PLACE_IMAGE_FALLBACK; } }} />
               <div className="p-4">
                 <div className="flex items-center justify-between">
                   <div>

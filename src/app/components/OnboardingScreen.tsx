@@ -4,7 +4,7 @@ import { ArrowRight, Check } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { Button } from "./Button";
 import { UsernameGate } from "./UsernameGate";
-import { PLACE_IMAGE_FALLBACK } from "../lib/types";
+import { PLACE_IMAGE_FALLBACK, originalImage } from "../lib/types";
 
 // Round a real count down to a friendly "+" figure (e.g. 3213 -> "3,200+").
 function friendlyCount(n: number): string {
@@ -175,7 +175,7 @@ export function OnboardingScreen({ onComplete }: Props) {
           src="https://images.unsplash.com/photo-1726873800099-53f5496281e0?w=900&h=1600&fit=crop&auto=format"
           alt="مقاهي الرياض"
           className="absolute inset-0 w-full h-full object-cover"
-          onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }}
+          onError={e => { const t = e.currentTarget; const o = originalImage(t.src); if (t.src !== o) { t.src = o; } else if (t.src !== PLACE_IMAGE_FALLBACK) { t.src = PLACE_IMAGE_FALLBACK; } }}
         />
 
         {/* multi-layer dark overlay: top subtle, bottom strong to keep content readable */}
@@ -300,7 +300,7 @@ export function OnboardingScreen({ onComplete }: Props) {
       <div className="h-full flex flex-col overflow-hidden bg-background">
         {/* top image */}
         <div className="relative flex-shrink-0" style={{ height: "36%" }}>
-          <img src={BG_AUTH} alt="" className="w-full h-full object-cover" onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }} />
+          <img src={BG_AUTH} alt="" className="w-full h-full object-cover" onError={e => { const t = e.currentTarget; const o = originalImage(t.src); if (t.src !== o) { t.src = o; } else if (t.src !== PLACE_IMAGE_FALLBACK) { t.src = PLACE_IMAGE_FALLBACK; } }} />
           <div
             className="absolute inset-0"
             style={{ background: "linear-gradient(to bottom, rgba(44,24,16,0.45) 0%, rgba(44,24,16,0.1) 50%, var(--background) 100%)" }}
@@ -385,7 +385,7 @@ export function OnboardingScreen({ onComplete }: Props) {
     return (
       <div className="h-full flex flex-col bg-background overflow-hidden" dir="rtl">
         <div className="relative flex-shrink-0" style={{ height: "26%" }}>
-          <img src={BG_COFFEE} alt="" className="w-full h-full object-cover" onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }} />
+          <img src={BG_COFFEE} alt="" className="w-full h-full object-cover" onError={e => { const t = e.currentTarget; const o = originalImage(t.src); if (t.src !== o) { t.src = o; } else if (t.src !== PLACE_IMAGE_FALLBACK) { t.src = PLACE_IMAGE_FALLBACK; } }} />
           <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(44,24,16,0.55) 0%, var(--background) 100%)" }} />
           <button
             onClick={() => setView(isLogin ? "login" : "register")}
@@ -474,7 +474,7 @@ export function OnboardingScreen({ onComplete }: Props) {
                   className="relative rounded-2xl overflow-hidden text-right"
                   style={{ height: 108 }}
                 >
-                  <img src={item.img} alt={item.label} className="absolute inset-0 w-full h-full object-cover" onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }} />
+                  <img src={item.img} alt={item.label} className="absolute inset-0 w-full h-full object-cover" onError={e => { const t = e.currentTarget; const o = originalImage(t.src); if (t.src !== o) { t.src = o; } else if (t.src !== PLACE_IMAGE_FALLBACK) { t.src = PLACE_IMAGE_FALLBACK; } }} />
                   <div
                     className="absolute inset-0 transition-all duration-200"
                     style={{

@@ -9,7 +9,7 @@ import { getSuggestedUsers, getFollowingIds, toggleFollowUser, updateProfile, ge
 import { getPlaces } from "../lib/places";
 import { toast } from "../lib/toast";
 import { Button } from "./Button";
-import { sizedImage, IMG, PLACE_IMAGE_FALLBACK } from "../lib/types";
+import { sizedImage, IMG, PLACE_IMAGE_FALLBACK, originalImage } from "../lib/types";
 import { useSheetA11y } from "./Sheet";
 
 type Props = {
@@ -311,7 +311,7 @@ export function ProfilePage({ userId, currentUser, onPlaceClick, onListClick, on
                   className="flex gap-3 p-3 bg-card border border-border rounded-2xl cursor-pointer hover:shadow-md transition-shadow"
                   {...tappable(() => onListClick(list.id), list.title)}
                 >
-                  <img src={sizedImage(list.coverImage, IMG.thumb)} alt={list.title} className="w-16 h-16 rounded-xl object-cover flex-shrink-0" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }} />
+                  <img src={sizedImage(list.coverImage, IMG.thumb)} alt={list.title} className="w-16 h-16 rounded-xl object-cover flex-shrink-0" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; const o = originalImage(t.src); if (t.src !== o) { t.src = o; } else if (t.src !== PLACE_IMAGE_FALLBACK) { t.src = PLACE_IMAGE_FALLBACK; } }} />
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-semibold text-foreground">{list.title}</h3>
                     <p className="text-xs text-muted-foreground mt-0.5">{list.placeCount} أماكن · {list.followers} متابع</p>
@@ -340,7 +340,7 @@ export function ProfilePage({ userId, currentUser, onPlaceClick, onListClick, on
                     className="bg-card border border-border rounded-2xl overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
                     {...tappable(() => onPlaceClick(place.id), place.name)}
                   >
-                    <img src={sizedImage(place.image, IMG.card)} alt={place.name} className="w-full h-28 object-cover" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }} />
+                    <img src={sizedImage(place.image, IMG.card)} alt={place.name} className="w-full h-28 object-cover" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; const o = originalImage(t.src); if (t.src !== o) { t.src = o; } else if (t.src !== PLACE_IMAGE_FALLBACK) { t.src = PLACE_IMAGE_FALLBACK; } }} />
                     <div className="p-2.5">
                       <h3 className="text-xs font-semibold text-foreground truncate">{place.name}</h3>
                       <p className="text-xs text-muted-foreground mt-0.5">{place.district}</p>
@@ -372,7 +372,7 @@ export function ProfilePage({ userId, currentUser, onPlaceClick, onListClick, on
                           className="bg-card border border-border rounded-2xl overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
                           {...tappable(() => onPlaceClick(place.id), place.name)}
                         >
-                          <img src={sizedImage(place.image, IMG.card)} alt={place.name} className="w-full h-28 object-cover" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }} />
+                          <img src={sizedImage(place.image, IMG.card)} alt={place.name} className="w-full h-28 object-cover" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; const o = originalImage(t.src); if (t.src !== o) { t.src = o; } else if (t.src !== PLACE_IMAGE_FALLBACK) { t.src = PLACE_IMAGE_FALLBACK; } }} />
                           <div className="p-2.5">
                             <h3 className="text-xs font-semibold text-foreground truncate">{place.name}</h3>
                             <p className="text-xs text-muted-foreground mt-0.5">{place.district}</p>
@@ -394,7 +394,7 @@ export function ProfilePage({ userId, currentUser, onPlaceClick, onListClick, on
                           className="bg-card border border-border rounded-2xl overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
                           {...tappable(() => onPlaceClick(place.id), place.name)}
                         >
-                          <img src={sizedImage(place.image, IMG.card)} alt={place.name} className="w-full h-28 object-cover" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }} />
+                          <img src={sizedImage(place.image, IMG.card)} alt={place.name} className="w-full h-28 object-cover" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; const o = originalImage(t.src); if (t.src !== o) { t.src = o; } else if (t.src !== PLACE_IMAGE_FALLBACK) { t.src = PLACE_IMAGE_FALLBACK; } }} />
                           <div className="p-2.5">
                             <h3 className="text-xs font-semibold text-foreground truncate">{place.name}</h3>
                             <p className="text-xs text-muted-foreground mt-0.5">{place.district}</p>
@@ -510,7 +510,8 @@ export function ProfilePage({ userId, currentUser, onPlaceClick, onListClick, on
                   value={editName}
                   onChange={e => setEditName(e.target.value)}
                   className="w-full bg-input-background border border-border rounded-2xl px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
-                />
+                    maxLength={60}
+                  />
               </div>
               <div>
                 <label className="text-xs text-muted-foreground mb-1.5 block">المعرّف (username)</label>
@@ -535,6 +536,7 @@ export function ProfilePage({ userId, currentUser, onPlaceClick, onListClick, on
               <div>
                 <label className="text-xs text-muted-foreground mb-1.5 block">نبذة</label>
                 <textarea
+                  maxLength={300}
                   value={editBio}
                   onChange={e => setEditBio(e.target.value)}
                   rows={2}
@@ -549,7 +551,8 @@ export function ProfilePage({ userId, currentUser, onPlaceClick, onListClick, on
                   onChange={e => setEditLocation(e.target.value)}
                   placeholder="مثل: الرياض"
                   className="w-full bg-input-background border border-border rounded-2xl px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
-                />
+                    maxLength={60}
+                  />
               </div>
               <div>
                 <label className="text-xs text-muted-foreground mb-2 block">روابط التواصل (اختياري)</label>
@@ -567,6 +570,7 @@ export function ProfilePage({ userId, currentUser, onPlaceClick, onListClick, on
                       value={f.v}
                       onChange={e => f.set(e.target.value)}
                       placeholder={f.ph}
+                      maxLength={200}
                       className="w-full bg-input-background border border-border rounded-2xl px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
                     />
                   ))}

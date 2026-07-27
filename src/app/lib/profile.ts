@@ -32,6 +32,10 @@ export async function getProfileByUsername(username: string): Promise<Profile | 
 
 export async function updateProfile(userId: string, patch: ProfileEdit): Promise<void> {
   const { error } = await supabase.from("profiles").update(patch).eq("id", userId);
+  // 23514 = a length CHECK rejected the value. The inputs cap length, so this
+  // only fires for pasted/programmatic input — give a usable message instead
+  // of a raw Postgres string.
+  if (error?.code === "23514") throw new Error("النص المُدخل طويل جداً — اختصره وحاول مجدداً");
   if (error) throw error;
 }
 

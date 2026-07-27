@@ -10,7 +10,7 @@ import { getPlaces } from "../lib/places";
 import { FEATURES } from "../lib/features";
 import { toast } from "../lib/toast";
 import { Button } from "./Button";
-import { sizedImage, IMG, PLACE_IMAGE_FALLBACK } from "../lib/types";
+import { sizedImage, IMG, PLACE_IMAGE_FALLBACK, originalImage } from "../lib/types";
 import { useSheetA11y } from "./Sheet";
 
 type Props = {
@@ -199,7 +199,7 @@ export function ListsPage({ userId, isCreator, onPlaceClick, savedPlaces, onSave
       <div className="flex-1 overflow-y-auto pb-24" dir="rtl">
         {/* Header */}
         <div className="relative h-56">
-          <img src={sizedImage(selectedList.coverImage, IMG.card)} alt={selectedList.title} className="w-full h-full object-cover" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }} />
+          <img src={sizedImage(selectedList.coverImage, IMG.card)} alt={selectedList.title} className="w-full h-full object-cover" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; const o = originalImage(t.src); if (t.src !== o) { t.src = o; } else if (t.src !== PLACE_IMAGE_FALLBACK) { t.src = PLACE_IMAGE_FALLBACK; } }} />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
           <button
             onClick={() => setSelectedList(null)}
@@ -299,7 +299,7 @@ export function ListsPage({ userId, isCreator, onPlaceClick, savedPlaces, onSave
                   className="flex gap-3 p-3 bg-card rounded-2xl border border-border cursor-pointer hover:shadow-md transition-shadow"
                   {...tappable(() => onPlaceClick(place.id), place.name)}
                 >
-                  <img src={sizedImage(place.image, IMG.thumb)} alt={place.name} className="w-20 h-20 rounded-xl object-cover flex-shrink-0" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }} />
+                  <img src={sizedImage(place.image, IMG.thumb)} alt={place.name} className="w-20 h-20 rounded-xl object-cover flex-shrink-0" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; const o = originalImage(t.src); if (t.src !== o) { t.src = o; } else if (t.src !== PLACE_IMAGE_FALLBACK) { t.src = PLACE_IMAGE_FALLBACK; } }} />
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-semibold text-foreground">{place.name}</h3>
                     <p className="text-xs text-muted-foreground mt-0.5">{place.type} · {place.district}</p>
@@ -350,7 +350,7 @@ export function ListsPage({ userId, isCreator, onPlaceClick, savedPlaces, onSave
                   className="flex items-center gap-3 p-3 bg-card border border-border rounded-2xl cursor-pointer hover:shadow-md transition-shadow"
                   {...tappable(() => setSelectedList(list), list.title)}
                 >
-                  <img src={sizedImage(list.coverImage, IMG.thumb)} alt={list.title} className="w-16 h-16 rounded-xl object-cover flex-shrink-0" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }} />
+                  <img src={sizedImage(list.coverImage, IMG.thumb)} alt={list.title} className="w-16 h-16 rounded-xl object-cover flex-shrink-0" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; const o = originalImage(t.src); if (t.src !== o) { t.src = o; } else if (t.src !== PLACE_IMAGE_FALLBACK) { t.src = PLACE_IMAGE_FALLBACK; } }} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       {list.isPublic ? <Globe size={11} className="text-muted-foreground" /> : <Lock size={11} className="text-muted-foreground" />}
@@ -394,7 +394,7 @@ export function ListsPage({ userId, isCreator, onPlaceClick, savedPlaces, onSave
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           loading="lazy"
           decoding="async"
-          onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }}
+          onError={e => { const t = e.currentTarget; const o = originalImage(t.src); if (t.src !== o) { t.src = o; } else if (t.src !== PLACE_IMAGE_FALLBACK) { t.src = PLACE_IMAGE_FALLBACK; } }}
         />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                   {FEATURES.paidLists && list.isPaid && (

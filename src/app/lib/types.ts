@@ -119,6 +119,13 @@ export const PLACE_IMAGE_FALLBACK =
 // storage. Widths are the CSS size at ~2x for retina.
 export const IMG = { thumb: 200, card: 430, hero: 860 } as const;
 
+// Undo sizedImage(): the original object URL, for onError retries.
+export function originalImage(url: string): string {
+  return url.includes("/storage/v1/render/image/public/")
+    ? url.replace("/storage/v1/render/image/public/", "/storage/v1/object/public/").split("?")[0]
+    : url;
+}
+
 export function sizedImage(url: string, width: number, quality = 70): string {
   // Only our own storage objects can be transformed; external URLs (the
   // Unsplash fallback, anything an admin pasted) pass through untouched.

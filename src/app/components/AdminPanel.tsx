@@ -259,15 +259,25 @@ export function AdminPanel({ userId, onBack }: Props) {
   const [editCategory, setEditCategory] = useState("");
 
   const loadOverview = (expanded = false) => {
-    getOverviewStats().then(setStats).catch(() => toast.error("تعذّر تحميل الإحصائيات — تحقق من اتصالك"));
-    getAuditLog(expanded ? 100 : 6).then(setAuditLog).catch(() => toast.error("تعذّر تحميل سجل النشاط"));
+    getOverviewStats().then(setStats).catch(adminLoadFailed);
+    getAuditLog(expanded ? 100 : 6).then(setAuditLog).catch(adminLoadFailed);
   };
-  const loadPlaces = () => getPlaces(true).then(setPlaces).catch(() => toast.error("تعذّر تحميل الأماكن — حاول مجدداً"));
-  const loadVerify = () => getVerificationRequests().then(setVerifyRequests).catch(() => toast.error("تعذّر تحميل طلبات التوثيق"));
-  const loadReports = () => getReports().then(setReports).catch(() => toast.error("تعذّر تحميل البلاغات"));
-  const loadPayouts = () => getPayoutRequests().then(setPayoutRequests).catch(() => toast.error("تعذّر تحميل طلبات السحب"));
-  const loadMonetization = () => getMonetizationStats().then(setMonetization).catch(() => toast.error("تعذّر تحميل بيانات الإيرادات"));
-  const loadUsers = (q: string) => searchUsers(q).then(setUsers).catch(() => toast.error("تعذّر البحث عن المستخدمين"));
+  // One outage fired a toast per load (8 of them), most evicted before they
+  // could be read. Collapse the LOAD failures into a single message; action
+  // errors keep their own text so the operator knows what failed.
+  const loadErrorShown = useRef(false);
+  const adminLoadFailed = () => {
+    if (loadErrorShown.current) return;
+    loadErrorShown.current = true;
+    toast.error("تعذّر تحميل بيانات اللوحة — تحقق من اتصالك ثم أعد التحميل");
+    setTimeout(() => { loadErrorShown.current = false; }, 5000);
+  };
+  const loadPlaces = () => getPlaces(true).then(setPlaces).catch(adminLoadFailed);
+  const loadVerify = () => getVerificationRequests().then(setVerifyRequests).catch(adminLoadFailed);
+  const loadReports = () => getReports().then(setReports).catch(adminLoadFailed);
+  const loadPayouts = () => getPayoutRequests().then(setPayoutRequests).catch(adminLoadFailed);
+  const loadMonetization = () => getMonetizationStats().then(setMonetization).catch(adminLoadFailed);
+  const loadUsers = (q: string) => searchUsers(q).then(setUsers).catch(adminLoadFailed);
 
   useEffect(() => {
     loadOverview();
