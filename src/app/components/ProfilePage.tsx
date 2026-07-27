@@ -9,7 +9,7 @@ import { getSuggestedUsers, getFollowingIds, toggleFollowUser, updateProfile, ge
 import { getPlaces } from "../lib/places";
 import { toast } from "../lib/toast";
 import { Button } from "./Button";
-import { sizedImage, IMG } from "../lib/types";
+import { sizedImage, IMG, PLACE_IMAGE_FALLBACK } from "../lib/types";
 import { useSheetA11y } from "./Sheet";
 
 type Props = {
@@ -219,6 +219,7 @@ export function ProfilePage({ userId, currentUser, onPlaceClick, onListClick, on
                   style={{ borderWidth: 3 }}
           loading="lazy"
           decoding="async"
+          onError={e => { e.currentTarget.style.display = "none"; }}
         />
               ) : (
                 <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center border-3 border-accent text-2xl font-bold text-muted-foreground" style={{ borderWidth: 3 }}>
@@ -308,7 +309,7 @@ export function ProfilePage({ userId, currentUser, onPlaceClick, onListClick, on
                   className="flex gap-3 p-3 bg-card border border-border rounded-2xl cursor-pointer hover:shadow-md transition-shadow"
                   {...tappable(() => onListClick(list.id), list.title)}
                 >
-                  <img src={sizedImage(list.coverImage, IMG.thumb)} alt={list.title} className="w-16 h-16 rounded-xl object-cover flex-shrink-0" loading="lazy" decoding="async" />
+                  <img src={sizedImage(list.coverImage, IMG.thumb)} alt={list.title} className="w-16 h-16 rounded-xl object-cover flex-shrink-0" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }} />
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-semibold text-foreground">{list.title}</h3>
                     <p className="text-xs text-muted-foreground mt-0.5">{list.placeCount} أماكن · {list.followers} متابع</p>
@@ -337,7 +338,7 @@ export function ProfilePage({ userId, currentUser, onPlaceClick, onListClick, on
                     className="bg-card border border-border rounded-2xl overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
                     {...tappable(() => onPlaceClick(place.id), place.name)}
                   >
-                    <img src={sizedImage(place.image, IMG.card)} alt={place.name} className="w-full h-28 object-cover" loading="lazy" decoding="async" />
+                    <img src={sizedImage(place.image, IMG.card)} alt={place.name} className="w-full h-28 object-cover" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }} />
                     <div className="p-2.5">
                       <h3 className="text-xs font-semibold text-foreground truncate">{place.name}</h3>
                       <p className="text-xs text-muted-foreground mt-0.5">{place.district}</p>
@@ -369,7 +370,7 @@ export function ProfilePage({ userId, currentUser, onPlaceClick, onListClick, on
                           className="bg-card border border-border rounded-2xl overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
                           {...tappable(() => onPlaceClick(place.id), place.name)}
                         >
-                          <img src={sizedImage(place.image, IMG.card)} alt={place.name} className="w-full h-28 object-cover" loading="lazy" decoding="async" />
+                          <img src={sizedImage(place.image, IMG.card)} alt={place.name} className="w-full h-28 object-cover" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }} />
                           <div className="p-2.5">
                             <h3 className="text-xs font-semibold text-foreground truncate">{place.name}</h3>
                             <p className="text-xs text-muted-foreground mt-0.5">{place.district}</p>
@@ -391,7 +392,7 @@ export function ProfilePage({ userId, currentUser, onPlaceClick, onListClick, on
                           className="bg-card border border-border rounded-2xl overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
                           {...tappable(() => onPlaceClick(place.id), place.name)}
                         >
-                          <img src={sizedImage(place.image, IMG.card)} alt={place.name} className="w-full h-28 object-cover" loading="lazy" decoding="async" />
+                          <img src={sizedImage(place.image, IMG.card)} alt={place.name} className="w-full h-28 object-cover" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }} />
                           <div className="p-2.5">
                             <h3 className="text-xs font-semibold text-foreground truncate">{place.name}</h3>
                             <p className="text-xs text-muted-foreground mt-0.5">{place.district}</p>
@@ -415,7 +416,7 @@ export function ProfilePage({ userId, currentUser, onPlaceClick, onListClick, on
             {suggestedUsers.map(u => (
               <div key={u.id} className="flex items-center gap-3 p-3 bg-card border border-border rounded-2xl">
                 {u.avatar_url ? (
-                  <img src={sizedImage(u.avatar_url, IMG.thumb)} alt={u.name} className="w-11 h-11 rounded-full object-cover flex-shrink-0" loading="lazy" decoding="async" />
+                  <img src={sizedImage(u.avatar_url, IMG.thumb)} alt={u.name} className="w-11 h-11 rounded-full object-cover flex-shrink-0" loading="lazy" decoding="async" onError={e => { e.currentTarget.style.display = "none"; }} />
                 ) : (
                   <div className="w-11 h-11 rounded-full bg-muted flex items-center justify-center flex-shrink-0 text-sm font-bold text-muted-foreground">
                     {u.name?.[0] ?? "؟"}
@@ -470,7 +471,7 @@ export function ProfilePage({ userId, currentUser, onPlaceClick, onListClick, on
               <div className="flex items-center gap-4">
                 <div className="relative">
                   {editAvatarUrl ? (
-                    <img src={editAvatarUrl} alt="صورة الملف" className="w-16 h-16 rounded-full object-cover" loading="lazy" decoding="async" />
+                    <img src={editAvatarUrl} alt="صورة الملف" className="w-16 h-16 rounded-full object-cover" loading="lazy" decoding="async" onError={e => { e.currentTarget.style.display = "none"; }} />
                   ) : (
                     <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center text-xl font-bold text-muted-foreground">
                       {editName?.[0] ?? "؟"}

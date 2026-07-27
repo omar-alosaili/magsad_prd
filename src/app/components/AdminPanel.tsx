@@ -625,7 +625,7 @@ export function AdminPanel({ userId, onBack }: Props) {
                 {filteredPlaces.slice(0, placeListLimit).map(place => (
                   <div key={place.id} className="p-3 bg-card border border-border rounded-2xl">
                     <div className="flex gap-3">
-                      <img src={place.image} alt={place.name} className="w-16 h-16 rounded-xl object-cover flex-shrink-0" />
+                      <img src={place.image} alt={place.name} className="w-16 h-16 rounded-xl object-cover flex-shrink-0" onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }} />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
                           <h3 className="text-sm font-semibold text-foreground truncate">{place.name}</h3>
@@ -1029,7 +1029,7 @@ export function AdminPanel({ userId, onBack }: Props) {
                           <div className="flex gap-2 mt-2">
                             {report.review.photos.map(url => (
                               <a key={url} href={url} target="_blank" rel="noopener noreferrer">
-                                <img src={url} alt="صورة مُبلّغ عنها" className="w-14 h-14 rounded-lg object-cover" />
+                                <img src={url} alt="صورة مُبلّغ عنها" className="w-14 h-14 rounded-lg object-cover" onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }} />
                               </a>
                             ))}
                           </div>
@@ -1189,7 +1189,7 @@ export function AdminPanel({ userId, onBack }: Props) {
                     onClick={() => handleAssignPlace(p)}
                     className="flex items-center gap-3 p-3 bg-background border border-border rounded-2xl text-right hover:border-accent/50 transition-colors"
                   >
-                    <img src={p.image} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
+                    <img src={p.image} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }} />
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-foreground truncate">{p.name}</p>
                       <p className="text-xs text-muted-foreground">{p.district} · {p.type}</p>

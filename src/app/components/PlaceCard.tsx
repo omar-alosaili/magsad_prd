@@ -1,7 +1,7 @@
 import { Bookmark, Star, MapPin, Wifi, Users, Baby, Trees } from "lucide-react";
 import { Place, displayRating, isRecentlyAdded } from "./data";
 import { tappable } from "../lib/a11y";
-import { sizedImage, IMG } from "../lib/types";
+import { sizedImage, IMG, PLACE_IMAGE_FALLBACK } from "../lib/types";
 
 type Props = {
   place: Place;
@@ -28,6 +28,7 @@ export function PlaceCard({ place, onSave, saved, onClick, compact }: Props) {
           className="w-20 h-20 rounded-xl object-cover flex-shrink-0"
           loading="lazy"
           decoding="async"
+          onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }}
         />
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
@@ -79,6 +80,7 @@ export function PlaceCard({ place, onSave, saved, onClick, compact }: Props) {
           className="w-full h-52 object-cover group-hover:scale-105 transition-transform duration-500"
           loading="lazy"
           decoding="async"
+          onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
 

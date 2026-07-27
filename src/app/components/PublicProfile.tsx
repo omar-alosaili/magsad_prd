@@ -6,7 +6,7 @@ import type { List, Place } from "./data";
 import { getFollowCounts, isFollowing, toggleFollowUser } from "../lib/profile";
 import { getPublicListsByUser, getReviewsByUser, getSavedPlacesByUser, type UserReview } from "../lib/social";
 import { toast } from "../lib/toast";
-import { sizedImage, IMG } from "../lib/types";
+import { sizedImage, IMG, PLACE_IMAGE_FALLBACK } from "../lib/types";
 
 type Props = {
   profile: Profile;
@@ -107,7 +107,7 @@ export function PublicProfile({ profile, viewerId, isAdmin, onBack, onPlaceClick
         </button>
         <div className="flex items-center gap-4">
           {profile.avatar_url ? (
-            <img src={sizedImage(profile.avatar_url, IMG.thumb)} alt={profile.name} className="w-20 h-20 rounded-full object-cover border-2 border-accent" loading="lazy" decoding="async" />
+            <img src={sizedImage(profile.avatar_url, IMG.thumb)} alt={profile.name} className="w-20 h-20 rounded-full object-cover border-2 border-accent" loading="lazy" decoding="async" onError={e => { e.currentTarget.style.display = "none"; }} />
           ) : (
             <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center border-2 border-accent text-2xl font-bold text-muted-foreground">
               {profile.name?.[0] ?? "؟"}
@@ -190,7 +190,7 @@ export function PublicProfile({ profile, viewerId, isAdmin, onBack, onPlaceClick
                   {...tappable(() => onListClick(list), list.title)}
                   className="flex gap-3 p-3 bg-card border border-border rounded-2xl cursor-pointer hover:shadow-md transition-shadow"
                 >
-                  <img src={sizedImage(list.coverImage, IMG.thumb)} alt={list.title} className="w-16 h-16 rounded-xl object-cover flex-shrink-0" loading="lazy" decoding="async" />
+                  <img src={sizedImage(list.coverImage, IMG.thumb)} alt={list.title} className="w-16 h-16 rounded-xl object-cover flex-shrink-0" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }} />
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-semibold text-foreground">{list.title}</h3>
                     <p className="text-xs text-muted-foreground mt-0.5">{list.placeCount} أماكن · {list.followers} متابع</p>
@@ -216,7 +216,7 @@ export function PublicProfile({ profile, viewerId, isAdmin, onBack, onPlaceClick
                   {...tappable(() => { if (r.place) onPlaceClick(r.place.id); }, r.place?.name)}
                   className="flex gap-3 p-3 bg-card border border-border rounded-2xl cursor-pointer hover:shadow-md transition-shadow"
                 >
-                  <img src={sizedImage(r.place!.image, IMG.thumb)} alt={r.place!.name} className="w-16 h-16 rounded-xl object-cover flex-shrink-0" loading="lazy" decoding="async" />
+                  <img src={sizedImage(r.place!.image, IMG.thumb)} alt={r.place!.name} className="w-16 h-16 rounded-xl object-cover flex-shrink-0" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <h3 className="text-sm font-semibold text-foreground">{r.place!.name}</h3>
@@ -245,7 +245,7 @@ export function PublicProfile({ profile, viewerId, isAdmin, onBack, onPlaceClick
                   {...tappable(() => onPlaceClick(place.id), place.name)}
                   className="bg-card border border-border rounded-2xl overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
                 >
-                  <img src={sizedImage(place.image, IMG.card)} alt={place.name} className="w-full h-28 object-cover" loading="lazy" decoding="async" />
+                  <img src={sizedImage(place.image, IMG.card)} alt={place.name} className="w-full h-28 object-cover" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }} />
                   <div className="p-2.5">
                     <h3 className="text-xs font-semibold text-foreground truncate">{place.name}</h3>
                     <p className="text-xs text-muted-foreground mt-0.5">{place.district}</p>

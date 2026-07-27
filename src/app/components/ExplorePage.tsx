@@ -9,7 +9,7 @@ import { searchFood, type FoodResult } from "../lib/foodSearch";
 import { tappable } from "../lib/a11y";
 import type { Profile } from "../lib/types";
 import { PlaceCard } from "./PlaceCard";
-import { sizedImage, IMG } from "../lib/types";
+import { sizedImage, IMG, PLACE_IMAGE_FALLBACK } from "../lib/types";
 
 // Real Google Map when a browser key is configured; the styled mock map
 // remains as a keyless fallback.
@@ -132,6 +132,24 @@ export function ExplorePage({ onPlaceClick, onUserClick, currentUserId, savedPla
 
   // Offer only districts that actually have places, so the filter always matches data.
   const districts = ["الجميع", ...[...new Set(places.map(p => p.district).filter(Boolean))].sort()];
+
+  // Same rule for price and amenities. The Google sync leaves several of these
+  // uniform across the whole catalog (every place is price level 2; nothing is
+  // flagged work-friendly or with parking), so the UI was offering filters that
+  // could only ever return zero results. Hide an option until real data backs
+  // it — this self-heals as the catalog improves.
+  const availablePrices = [1, 2, 3].filter(l => places.some(p => p.priceLevel === l));
+  const AMENITIES = [
+    { key: "isWorkFriendly" as const, label: "للعمل", icon: <Wifi size={13} />, has: (p: Place) => p.isWorkFriendly },
+    { key: "isFamilyFriendly" as const, label: "للعائلة", icon: <Users size={13} />, has: (p: Place) => p.isFamilyFriendly },
+    { key: "isKidsFriendly" as const, label: "للأطفال", icon: <Baby size={13} />, has: (p: Place) => p.isKidsFriendly },
+    { key: "hasOutdoorSeating" as const, label: "جلسات خارجية", icon: <Trees size={13} />, has: (p: Place) => p.hasOutdoorSeating },
+    { key: "isOpen" as const, label: "مفتوح الآن", icon: null, has: (p: Place) => p.isOpen },
+    { key: "isNew" as const, label: "جديد", icon: null, has: (p: Place) => isRecentlyAdded(p) },
+  ];
+  const availableAmenities = places.length
+    ? AMENITIES.filter(a => places.some(a.has))
+    : AMENITIES;
 
   const activeFilterCount = Object.entries(filters).filter(([k, v]) => {
     if (k === "district") return v !== "الجميع";
@@ -333,7 +351,7 @@ export function ExplorePage({ onPlaceClick, onUserClick, currentUserId, savedPla
                   >
                     <div className="flex gap-3">
                       <div className="relative flex-shrink-0">
-                        <img src={sizedImage(r.place.image, IMG.thumb)} alt={r.place.name} className="w-20 h-20 rounded-xl object-cover" loading="lazy" decoding="async" />
+                        <img src={sizedImage(r.place.image, IMG.thumb)} alt={r.place.name} className="w-20 h-20 rounded-xl object-cover" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }} />
                         <span className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
                           {i + 1}
                         </span>
@@ -402,7 +420,7 @@ export function ExplorePage({ onPlaceClick, onUserClick, currentUserId, savedPla
                   className="flex items-center gap-3 p-3 bg-card border border-border rounded-2xl text-right hover:shadow-md transition-shadow"
                 >
                   {u.avatar_url ? (
-                    <img src={sizedImage(u.avatar_url, IMG.thumb)} alt={u.name} className="w-12 h-12 rounded-full object-cover flex-shrink-0" loading="lazy" decoding="async" />
+                    <img src={sizedImage(u.avatar_url, IMG.thumb)} alt={u.name} className="w-12 h-12 rounded-full object-cover flex-shrink-0" loading="lazy" decoding="async" onError={e => { e.currentTarget.style.display = "none"; }} />
                   ) : (
                     <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center flex-shrink-0 text-base font-bold text-muted-foreground">
                       {u.name?.[0] ?? "؟"}
@@ -458,10 +476,10 @@ export function ExplorePage({ onPlaceClick, onUserClick, currentUserId, savedPla
                 </div>
               </div>
 
-              <div className="mb-3">
+              <div className="mb-3" hidden={availablePrices.length < 2}>
                 <p className="text-xs text-muted-foreground mb-2">السعر</p>
                 <div className="flex gap-2">
-                  {[null, 1, 2, 3].map(level => (
+                  {[null, ...availablePrices].map(level => (
                     <button
                       key={level ?? "all"}
                       onClick={() => setFilters(f => ({ ...f, priceLevel: level }))}
@@ -495,14 +513,7 @@ export function ExplorePage({ onPlaceClick, onUserClick, currentUserId, savedPla
               <div>
                 <p className="text-xs text-muted-foreground mb-2">المميزات</p>
                 <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { key: "isWorkFriendly" as const, label: "للعمل", icon: <Wifi size={13} /> },
-                    { key: "isFamilyFriendly" as const, label: "للعائلة", icon: <Users size={13} /> },
-                    { key: "isKidsFriendly" as const, label: "للأطفال", icon: <Baby size={13} /> },
-                    { key: "hasOutdoorSeating" as const, label: "جلسات خارجية", icon: <Trees size={13} /> },
-                    { key: "isOpen" as const, label: "مفتوح الآن", icon: null },
-                    { key: "isNew" as const, label: "جديد", icon: null },
-                  ].map(({ key, label, icon }) => (
+                  {availableAmenities.map(({ key, label, icon }) => (
                     <button
                       key={key}
                       onClick={() => toggle(key)}
@@ -600,7 +611,7 @@ export function ExplorePage({ onPlaceClick, onUserClick, currentUserId, savedPla
                       {isSelected ? (
                         <div className="relative flex flex-col items-center" dir="rtl">
                           <div className="px-2.5 py-1.5 rounded-2xl shadow-lg border-2 flex items-center gap-1.5 bg-primary text-white border-primary">
-                            <img src={sizedImage(place.image, IMG.thumb)} alt="" className="w-5 h-5 rounded-full object-cover" loading="lazy" decoding="async" />
+                            <img src={sizedImage(place.image, IMG.thumb)} alt="" className="w-5 h-5 rounded-full object-cover" loading="lazy" decoding="async" onError={e => { e.currentTarget.style.display = "none"; }} />
                             <span className="text-xs font-bold whitespace-nowrap">{place.name}</span>
                           </div>
                           <div className="w-2 h-2 rotate-45 mt-[-4px] bg-primary" />
@@ -694,7 +705,7 @@ export function ExplorePage({ onPlaceClick, onUserClick, currentUserId, savedPla
                           ? "bg-white text-foreground border-white"
                           : "bg-gray-100 text-gray-500 border-gray-200"
                       }`}>
-                        <img src={sizedImage(place.image, IMG.thumb)} alt="" className="w-5 h-5 rounded-full object-cover" loading="lazy" decoding="async" />
+                        <img src={sizedImage(place.image, IMG.thumb)} alt="" className="w-5 h-5 rounded-full object-cover" loading="lazy" decoding="async" onError={e => { e.currentTarget.style.display = "none"; }} />
                         <span className="text-xs font-bold whitespace-nowrap">{place.name}</span>
                       </div>
                       <div className={`w-2 h-2 rotate-45 mt-[-4px] ${isSelected ? "bg-primary" : "bg-white"}`} />
@@ -721,7 +732,7 @@ export function ExplorePage({ onPlaceClick, onUserClick, currentUserId, savedPla
                   className="flex gap-3 p-4 cursor-pointer"
                   {...tappable(() => onPlaceClick(selectedPlace.id), selectedPlace.name)}
                 >
-                  <img src={sizedImage(selectedPlace.image, IMG.thumb)} alt={selectedPlace.name} className="w-20 h-20 rounded-2xl object-cover flex-shrink-0" loading="lazy" decoding="async" />
+                  <img src={sizedImage(selectedPlace.image, IMG.thumb)} alt={selectedPlace.name} className="w-20 h-20 rounded-2xl object-cover flex-shrink-0" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between">
                       <div>

@@ -18,7 +18,7 @@ import {
 import { toast } from "../lib/toast";
 import { OpeningHours } from "./OpeningHours";
 import type { Review } from "../lib/types";
-import { sizedImage, IMG } from "../lib/types";
+import { sizedImage, IMG, PLACE_IMAGE_FALLBACK } from "../lib/types";
 import { useSheetA11y } from "./Sheet";
 
 type Props = {
@@ -34,6 +34,9 @@ const priceMap = { 1: "＄ اقتصادي", 2: "＄＄ متوسط", 3: "＄＄�
 
 export function PlacePage({ placeId, userId, onBack, savedPlaces, onSave, onListClick }: Props) {
   const [place, setPlace] = useState<Place | null>(null);
+  // A shared ?p= link to a deleted/quarantined/mistyped place used to render
+  // null forever: a blank full-screen with no back button and no tab bar.
+  const [placeMissing, setPlaceMissing] = useState(false);
   const [placeLists, setPlaceLists] = useState<List[]>([]);
   const [myLists, setMyLists] = useState<List[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -75,7 +78,10 @@ export function PlacePage({ placeId, userId, onBack, savedPlaces, onSave, onList
     setReviewComment("");
     setReviewPhotos([]);
     setReviewsFailed(false);
-    getPlaceById(placeId).then(setPlace).catch(console.error);
+    setPlaceMissing(false);
+    getPlaceById(placeId)
+      .then(p => { setPlace(p); if (!p) setPlaceMissing(true); })
+      .catch(() => setPlaceMissing(true));
     getListsContainingPlace(placeId).then(setPlaceLists).catch(console.error);
     getReviewsForPlace(placeId).then(setReviews).catch(() => setReviewsFailed(true));
     setLocalVisitStatus(null);
@@ -203,7 +209,17 @@ export function PlacePage({ placeId, userId, onBack, savedPlaces, onSave, onList
     setShowSaveModal(false);
   };
 
-  if (!place) return null;
+  if (!place) {
+    if (!placeMissing) return null; // still loading — the parent shows a spinner
+    return (
+      <div className="h-full flex flex-col items-center justify-center gap-4 bg-background px-8" dir="rtl">
+        <p className="text-sm text-muted-foreground text-center">لم نعثر على هذا المكان — قد يكون حُذف أو تغيّر الرابط</p>
+        <button onClick={onBack} className="px-6 py-2.5 rounded-2xl bg-primary text-primary-foreground text-sm font-semibold">
+          العودة للرئيسية
+        </button>
+      </div>
+    );
+  }
 
 
   return (
@@ -214,6 +230,7 @@ export function PlacePage({ placeId, userId, onBack, savedPlaces, onSave, onList
           src={sizedImage(place.images[activeImage], IMG.hero)}
           alt={place.name}
           className="w-full h-full object-cover"
+          onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
 
@@ -485,7 +502,7 @@ export function PlacePage({ placeId, userId, onBack, savedPlaces, onSave, onList
                 <div className="flex items-center gap-2 mb-3 flex-wrap">
                   {reviewPhotos.map(url => (
                     <div key={url} className="relative">
-                      <img src={url} alt="صورة مرفقة" className="w-14 h-14 rounded-xl object-cover" loading="lazy" decoding="async" />
+                      <img src={url} alt="صورة مرفقة" className="w-14 h-14 rounded-xl object-cover" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }} />
                       <button
                         onClick={() => setReviewPhotos(prev => prev.filter(p => p !== url))}
                         aria-label="إزالة الصورة"
@@ -531,7 +548,7 @@ export function PlacePage({ placeId, userId, onBack, savedPlaces, onSave, onList
                   <div key={review.id} className="bg-card border border-border rounded-2xl p-4">
                     <div className="flex items-center gap-3 mb-3">
                       {review.avatar && (
-                        <img src={sizedImage(review.avatar, IMG.thumb)} alt={review.user} className="w-9 h-9 rounded-full object-cover" loading="lazy" decoding="async" />
+                        <img src={sizedImage(review.avatar, IMG.thumb)} alt={review.user} className="w-9 h-9 rounded-full object-cover" loading="lazy" decoding="async" onError={e => { e.currentTarget.style.display = "none"; }} />
                       )}
                       <div>
                         <p className="text-sm font-semibold text-foreground">{review.user}</p>
@@ -559,7 +576,7 @@ export function PlacePage({ placeId, userId, onBack, savedPlaces, onSave, onList
                       <div className="flex gap-2 mt-2.5">
                         {review.photos.map(url => (
                           <a key={url} href={url} target="_blank" rel="noopener noreferrer">
-                            <img src={url} alt={`صورة من ${review.user}`} className="w-20 h-20 rounded-xl object-cover" loading="lazy" decoding="async" />
+                            <img src={url} alt={`صورة من ${review.user}`} className="w-20 h-20 rounded-xl object-cover" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }} />
                           </a>
                         ))}
                       </div>
@@ -584,7 +601,7 @@ export function PlacePage({ placeId, userId, onBack, savedPlaces, onSave, onList
                     className="flex items-center gap-3 p-3 bg-card border border-border rounded-2xl cursor-pointer hover:border-accent/30 transition-colors"
                     {...tappable(() => onListClick(list.id), list.title)}
                   >
-                    <img src={sizedImage(list.coverImage, IMG.thumb)} alt={list.title} className="w-14 h-14 rounded-xl object-cover flex-shrink-0" loading="lazy" decoding="async" />
+                    <img src={sizedImage(list.coverImage, IMG.thumb)} alt={list.title} className="w-14 h-14 rounded-xl object-cover flex-shrink-0" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }} />
                     <div className="flex-1 min-w-0">
                       <h3 className="text-sm font-semibold text-foreground">{list.title}</h3>
                       <p className="text-xs text-muted-foreground mt-0.5">{list.placeCount} أماكن · {list.followers} متابع</p>
@@ -705,7 +722,7 @@ export function PlacePage({ placeId, userId, onBack, savedPlaces, onSave, onList
                     onClick={() => saveToList(list.id)}
                     className="flex items-center gap-3 p-3 rounded-2xl border border-border hover:border-accent/40 transition-colors text-right"
                   >
-                    <img src={sizedImage(list.coverImage, IMG.thumb)} alt={list.title} className="w-12 h-12 rounded-xl object-cover" loading="lazy" decoding="async" />
+                    <img src={sizedImage(list.coverImage, IMG.thumb)} alt={list.title} className="w-12 h-12 rounded-xl object-cover" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }} />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold truncate">{list.title}</p>
                       <p className="text-xs text-muted-foreground">{list.placeCount} أماكن</p>

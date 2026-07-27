@@ -45,20 +45,39 @@ const BRAND_ALIASES: [string, string][] = [
   ["half million", "هاف مليون"], ["coffee address", "عنوان القهوة"], ["albaik", "البيك"], ["baik", "البيك"],
 ];
 
+// Arabic is written with several interchangeable letter forms and optional
+// diacritics, so an exact substring match fails constantly: «قهوه» found 6
+// places where «قهوة» found 202, and 634 Latin-named places were unfindable
+// by a lowercase query. Fold both scripts to one comparable form.
+export function normalizeSearch(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[ً-ْٰـ]/g, "")   // harakat + tatweel
+    .replace(/[أإآٱ]/g, "ا")
+    .replace(/ة/g, "ه")                             // ta marbuta <-> ha
+    .replace(/[ىی]/g, "ي")
+    .replace(/ؤ/g, "و")
+    .replace(/ئ/g, "ي")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 // Place text search across Arabic name, English name, brand (with Latin
-// aliases), district, and category — "Dunkin" must find دانكن.
+// aliases), district, category and tags — "Dunkin" must find دانكن, and
+// «فطور» must match a place tagged for breakfast, not just one named for it.
 export function placeMatchesQuery(p: Place, query: string): boolean {
-  const q = query.trim();
+  const q = normalizeSearch(query);
   if (!q) return true;
-  const ql = q.toLowerCase();
-  if (p.name.includes(q) ||
-      (p.nameEn ?? "").toLowerCase().includes(ql) ||
-      (p.brand ?? "").includes(q) ||
-      p.district.includes(q) ||
-      p.category.includes(q)) return true;
-  // Alias path needs a real query, not a single letter
-  if (ql.length >= 3 && p.brand) {
-    return BRAND_ALIASES.some(([latin, ar]) => p.brand === ar && (latin.includes(ql) || ql.includes(latin)));
+  const haystack = normalizeSearch(
+    [p.name, p.nameEn ?? "", p.brand ?? "", p.district, p.category, (p.tags ?? []).join(" ")].join(" | "),
+  );
+  if (haystack.includes(q)) return true;
+  // Latin brand aliases: match whole words so "baikal" doesn't pull every البيك
+  if (q.length >= 3 && p.brand) {
+    const nb = normalizeSearch(p.brand);
+    return BRAND_ALIASES.some(([latin, ar]) =>
+      nb === normalizeSearch(ar) && (latin === q || latin.startsWith(q) || q.startsWith(latin)),
+    );
   }
   return false;
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { tappable } from "../lib/a11y";
 import { Plus, Heart, Bookmark, Lock, Globe, Share2, ArrowRight, Trash2, X, Check } from "lucide-react";
 import { displayRating, type List, type Place } from "./data";
@@ -10,7 +10,7 @@ import { getPlaces } from "../lib/places";
 import { FEATURES } from "../lib/features";
 import { toast } from "../lib/toast";
 import { Button } from "./Button";
-import { sizedImage, IMG } from "../lib/types";
+import { sizedImage, IMG, PLACE_IMAGE_FALLBACK } from "../lib/types";
 import { useSheetA11y } from "./Sheet";
 
 type Props = {
@@ -95,8 +95,11 @@ export function ListsPage({ userId, isCreator, onPlaceClick, savedPlaces, onSave
       });
   };
 
+  const likesInFlight = useRef<Set<string>>(new Set());
   const toggleLike = (id: string) => {
     if (!userId) return;
+    if (likesInFlight.current.has(id)) return;
+    likesInFlight.current.add(id);
     const currentlyLiked = likedLists.has(id);
     setLikedLists(prev => {
       const next = new Set(prev);
@@ -110,11 +113,14 @@ export function ListsPage({ userId, isCreator, onPlaceClick, savedPlaces, onSave
         return next;
       });
       toast.error("تعذّر تحديث الإعجاب — حاول مجدداً");
-    });
+    }).finally(() => { likesInFlight.current.delete(id); });
   };
 
+  const followsInFlight = useRef<Set<string>>(new Set());
   const toggleFollow = (id: string) => {
     if (!userId) return;
+    if (followsInFlight.current.has(id)) return;
+    followsInFlight.current.add(id);
     const currentlyFollowing = followedLists.has(id);
     setFollowedLists(prev => {
       const next = new Set(prev);
@@ -128,7 +134,7 @@ export function ListsPage({ userId, isCreator, onPlaceClick, savedPlaces, onSave
         return next;
       });
       toast.error("تعذّرت متابعة القائمة — حاول مجدداً");
-    });
+    }).finally(() => { followsInFlight.current.delete(id); });
   };
 
   const shareList = (list: List) => {
@@ -142,11 +148,15 @@ export function ListsPage({ userId, isCreator, onPlaceClick, savedPlaces, onSave
     }
   };
 
+  const [creatingList, setCreatingList] = useState(false);
   const createList = () => {
     if (!newListName.trim()) return;
-    if (!userId) return;
+    if (!userId || creatingList) return;
     const price = parseFloat(newListPrice);
+    // Validate BEFORE claiming the in-flight flag, or an invalid price would
+    // leave the button disabled forever.
     if (newListPaid && (!price || price <= 0)) return;
+    setCreatingList(true);
     createListInDb({
       userId,
       title: newListName,
@@ -165,7 +175,8 @@ export function ListsPage({ userId, isCreator, onPlaceClick, savedPlaces, onSave
       setNewListPrice("");
       setShowCreateModal(false);
       toast.success("تم إنشاء القائمة");
-    }).catch(() => toast.error("تعذّر إنشاء القائمة — حاول مجدداً"));
+    }).catch(() => toast.error("تعذّر إنشاء القائمة — حاول مجدداً"))
+      .finally(() => setCreatingList(false));
   };
 
   const handleDeleteList = (list: List) => {
@@ -186,7 +197,7 @@ export function ListsPage({ userId, isCreator, onPlaceClick, savedPlaces, onSave
       <div className="flex-1 overflow-y-auto pb-24" dir="rtl">
         {/* Header */}
         <div className="relative h-56">
-          <img src={sizedImage(selectedList.coverImage, IMG.card)} alt={selectedList.title} className="w-full h-full object-cover" loading="lazy" decoding="async" />
+          <img src={sizedImage(selectedList.coverImage, IMG.card)} alt={selectedList.title} className="w-full h-full object-cover" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }} />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
           <button
             onClick={() => setSelectedList(null)}
@@ -286,7 +297,7 @@ export function ListsPage({ userId, isCreator, onPlaceClick, savedPlaces, onSave
                   className="flex gap-3 p-3 bg-card rounded-2xl border border-border cursor-pointer hover:shadow-md transition-shadow"
                   {...tappable(() => onPlaceClick(place.id), place.name)}
                 >
-                  <img src={sizedImage(place.image, IMG.thumb)} alt={place.name} className="w-20 h-20 rounded-xl object-cover flex-shrink-0" loading="lazy" decoding="async" />
+                  <img src={sizedImage(place.image, IMG.thumb)} alt={place.name} className="w-20 h-20 rounded-xl object-cover flex-shrink-0" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }} />
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-semibold text-foreground">{place.name}</h3>
                     <p className="text-xs text-muted-foreground mt-0.5">{place.type} · {place.district}</p>
@@ -338,7 +349,7 @@ export function ListsPage({ userId, isCreator, onPlaceClick, savedPlaces, onSave
                   className="flex items-center gap-3 p-3 bg-card border border-border rounded-2xl cursor-pointer hover:shadow-md transition-shadow"
                   {...tappable(() => setSelectedList(list), list.title)}
                 >
-                  <img src={sizedImage(list.coverImage, IMG.thumb)} alt={list.title} className="w-16 h-16 rounded-xl object-cover flex-shrink-0" loading="lazy" decoding="async" />
+                  <img src={sizedImage(list.coverImage, IMG.thumb)} alt={list.title} className="w-16 h-16 rounded-xl object-cover flex-shrink-0" loading="lazy" decoding="async" onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       {list.isPublic ? <Globe size={11} className="text-muted-foreground" /> : <Lock size={11} className="text-muted-foreground" />}
@@ -382,6 +393,7 @@ export function ListsPage({ userId, isCreator, onPlaceClick, savedPlaces, onSave
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           loading="lazy"
           decoding="async"
+          onError={e => { const t = e.currentTarget; if (t.src !== PLACE_IMAGE_FALLBACK) t.src = PLACE_IMAGE_FALLBACK; }}
         />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                   {FEATURES.paidLists && list.isPaid && (
@@ -523,7 +535,7 @@ export function ListsPage({ userId, isCreator, onPlaceClick, savedPlaces, onSave
               <Button
                 fullWidth
                 onClick={createList}
-                disabled={!newListName.trim() || (newListPaid && !(parseFloat(newListPrice) > 0))}
+                disabled={creatingList || !newListName.trim() || (newListPaid && !(parseFloat(newListPrice) > 0))}
               >
                 <Check size={16} /> إنشاء القائمة
               </Button>
