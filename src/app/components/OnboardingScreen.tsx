@@ -40,6 +40,14 @@ const slideUp = {
 /* Saudi mobile numbers: 9 digits starting with 5 (e.g. 5XXXXXXXX) */
 const isValidSaudiPhone = (phone: string) => /^5\d{8}$/.test(phone);
 
+/* Must match the project's sms_otp_exp setting (Supabase auth config).
+   Without a visible countdown users kept typing a dead code and got the
+   generic "الرمز غير صحيح أو منتهي الصلاحية" with no idea which it was. */
+const OTP_TTL_SECONDS = 300;
+/* The provider rate-limits resends; asking again immediately just earns a
+   429. Grey the button out for the cooldown instead of failing the user. */
+const RESEND_COOLDOWN_SECONDS = 60;
+
 /* Map raw Supabase auth errors to user-friendly Arabic messages */
 const translateAuthError = (message: string): string => {
   const m = message.toLowerCase();
@@ -86,6 +94,10 @@ export function OnboardingScreen({ onComplete }: Props) {
   const [phone, setPhone]         = useState("");
   const [name, setName]           = useState("");
   const [otp, setOtp]             = useState(["","","","","",""]);
+  // When the current code was sent — drives both the expiry countdown and
+  // the resend cooldown. Null until the first successful send.
+  const [otpSentAt, setOtpSentAt] = useState<number | null>(null);
+  const [nowTs, setNowTs]         = useState(() => Date.now());
   const [interests, setInterests] = useState<Set<string>>(new Set());
   // Real catalogue stats for the splash — no hard-coded vanity numbers.
   const [stats, setStats] = useState<{ places: number; lists: number } | null>(null);
@@ -102,6 +114,20 @@ export function OnboardingScreen({ onComplete }: Props) {
   }, []);
   const [error, setError]         = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Tick once a second only while the code screen is up and something is
+  // still counting down — no timer running behind the rest of onboarding.
+  const otpElapsed = otpSentAt == null ? 0 : Math.floor((nowTs - otpSentAt) / 1000);
+  const otpSecondsLeft = Math.max(0, OTP_TTL_SECONDS - otpElapsed);
+  const otpExpired = otpSentAt != null && otpSecondsLeft === 0;
+  const resendIn = otpSentAt == null ? 0 : Math.max(0, RESEND_COOLDOWN_SECONDS - otpElapsed);
+
+  useEffect(() => {
+    if (view !== "otp" || otpSentAt == null) return;
+    if (otpSecondsLeft === 0 && resendIn === 0) return; // nothing left to count
+    const id = setInterval(() => setNowTs(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [view, otpSentAt, otpSecondsLeft === 0 && resendIn === 0]);
 
   const toggleInterest = (id: string) =>
     setInterests(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -141,6 +167,11 @@ export function OnboardingScreen({ onComplete }: Props) {
     });
     setSubmitting(false);
     if (error) { setError(translateAuthError(error.message)); return; }
+    // Restart the clock and clear any stale digits — on a resend the old
+    // code is dead, so leaving it in the boxes only invites a failed submit.
+    setOtp(["", "", "", "", "", ""]);
+    setOtpSentAt(Date.now());
+    setNowTs(Date.now());
     setView("otp");
   };
 
@@ -421,16 +452,36 @@ export function OnboardingScreen({ onComplete }: Props) {
               <p className="text-xs text-center text-destructive mb-4">{error}</p>
             )}
 
-            <p className="text-center text-sm text-muted-foreground mb-8">
-              لم تستلم الرمز؟{" "}
-              <button onClick={sendOtp} className="text-accent font-bold">إعادة الإرسال</button>
-            </p>
+            <div className="text-center mb-8">
+              {otpExpired ? (
+                <p className="text-sm text-destructive mb-1">انتهت صلاحية الرمز — اطلب رمزاً جديداً</p>
+              ) : (
+                // role=timer, not aria-live: announcing every tick would make
+                // a screen reader unusable on this screen.
+                <p role="timer" className="text-sm text-muted-foreground mb-1">
+                  ينتهي الرمز خلال{" "}
+                  <span className="text-foreground font-semibold" style={{ direction: "ltr", display: "inline-block" }}>
+                    {Math.floor(otpSecondsLeft / 60)}:{String(otpSecondsLeft % 60).padStart(2, "0")}
+                  </span>
+                </p>
+              )}
+              <p className="text-sm text-muted-foreground">
+                لم تستلم الرمز؟{" "}
+                <button
+                  onClick={sendOtp}
+                  disabled={resendIn > 0 || submitting}
+                  className={`font-bold ${resendIn > 0 ? "text-muted-foreground" : "text-accent"}`}
+                >
+                  {resendIn > 0 ? `إعادة الإرسال بعد ${resendIn} ثانية` : "إعادة الإرسال"}
+                </button>
+              </p>
+            </div>
 
             <Button
               fullWidth
               onClick={confirmOtp}
               loading={submitting}
-              disabled={otp.some(d => !d) || submitting}
+              disabled={otp.some(d => !d) || submitting || otpExpired}
             >
               تأكيد الرمز
             </Button>
