@@ -72,6 +72,18 @@ export async function uploadAvatar(userId: string, file: File): Promise<string> 
   return data.publicUrl;
 }
 
+// Self-serve erasure. The edge function takes the target from the caller's
+// own JWT, so this can only ever delete the signed-in account. Everything
+// personal cascades from the auth row; uploads are removed by the function.
+export async function deleteMyAccount(): Promise<void> {
+  const { data, error } = await supabase.functions.invoke("delete-account", { body: {} });
+  if (error) throw error;
+  if (!(data as { ok?: boolean })?.ok) throw new Error("delete_failed");
+  // The account is gone — drop the now-orphaned local session. scope "local"
+  // because a global sign-out would call an endpoint the user no longer has.
+  await supabase.auth.signOut({ scope: "local" }).catch(() => {});
+}
+
 // True if the username is free (case-insensitive), ignoring the caller's own.
 export async function isUsernameAvailable(username: string, selfId: string): Promise<boolean> {
   const { data, error } = await supabase

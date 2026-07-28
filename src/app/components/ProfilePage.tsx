@@ -5,7 +5,7 @@ import type { List as ListType, Place } from "./data";
 import type { Profile } from "../lib/types";
 import { getMyLists } from "../lib/lists";
 import { getVisitedPlaces } from "../lib/visitedPlaces";
-import { getSuggestedUsers, getFollowingIds, toggleFollowUser, updateProfile, getFollowCounts, isUsernameAvailable, USERNAME_RE, uploadAvatar, deleteAvatarFiles, MAX_AVATAR_BYTES } from "../lib/profile";
+import { getSuggestedUsers, getFollowingIds, toggleFollowUser, updateProfile, getFollowCounts, isUsernameAvailable, USERNAME_RE, uploadAvatar, deleteAvatarFiles, deleteMyAccount, MAX_AVATAR_BYTES } from "../lib/profile";
 import { getPlaces } from "../lib/places";
 import { toast } from "../lib/toast";
 import { Button } from "./Button";
@@ -49,6 +49,9 @@ export function ProfilePage({ userId, currentUser, onPlaceClick, onListClick, on
   const [editPersonalization, setEditPersonalization] = useState(true);
   const [editAvatarUrl, setEditAvatarUrl] = useState<string | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -139,6 +142,22 @@ export function ProfilePage({ userId, currentUser, onPlaceClick, onListClick, on
       .finally(() => { followsInFlight.current.delete(targetId); });
   };
 
+  // Typing the word is the guard: this is irreversible and there is no
+  // "restore account" path on the other side.
+  const DELETE_PHRASE = "حذف";
+  const confirmDelete = () => {
+    if (deleting || deleteConfirmText.trim() !== DELETE_PHRASE) return;
+    setDeleting(true);
+    deleteMyAccount()
+      .then(() => {
+        setShowDeleteModal(false);
+        toast.success("تم حذف حسابك وبياناتك");
+        // Full reload: every screen still holds this user's data in state.
+        setTimeout(() => { window.location.href = "/"; }, 900);
+      })
+      .catch(() => { setDeleting(false); toast.error("تعذّر حذف الحساب — حاول مجدداً أو راسلنا"); });
+  };
+
   const usernameBlocked = usernameStatus === "taken" || usernameStatus === "invalid" || usernameStatus === "checking";
 
   const saveProfileEdit = () => {
@@ -182,6 +201,7 @@ export function ProfilePage({ userId, currentUser, onPlaceClick, onListClick, on
   };
 
   const editSheet = useSheetA11y(showEditModal, () => setShowEditModal(false), "تعديل الملف");
+  const deleteSheet = useSheetA11y(showDeleteModal, () => setShowDeleteModal(false), "حذف الحساب");
 
   if (!currentUser) {
     return (
@@ -451,6 +471,14 @@ export function ProfilePage({ userId, currentUser, onPlaceClick, onListClick, on
           >
             <LogOut size={15} /> تسجيل الخروج
           </button>
+          {/* Erasure right (PDPL). Deliberately understated next to logout so
+              it can't be hit by mistake; the real guard is the typed confirm. */}
+          <button
+            onClick={() => { setDeleteConfirmText(""); setShowDeleteModal(true); }}
+            className="w-full mt-3 py-2 text-xs text-muted-foreground underline underline-offset-4"
+          >
+            حذف الحساب نهائياً
+          </button>
           {/* Legal — static pages under public/, served ahead of the SPA rewrite */}
           <p className="text-xs text-muted-foreground text-center mt-5">
             <a href="/privacy.html" className="text-accent font-medium">سياسة الخصوصية</a>
@@ -461,6 +489,43 @@ export function ProfilePage({ userId, currentUser, onPlaceClick, onListClick, on
           <p className="text-[10px] text-muted-foreground text-center mt-3">
             تتضمن بيانات الأماكن محتوى من Foursquare OS Places (Apache 2.0) وخرائط قوقل
           </p>
+        </div>
+      )}
+
+      {showDeleteModal && (
+        <div className="absolute inset-0 z-50 flex items-end" dir="rtl" {...deleteSheet}>
+          <div className="absolute inset-0 bg-black/40" onClick={() => !deleting && setShowDeleteModal(false)} />
+          <div className="relative w-full bg-card rounded-t-3xl p-6" style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom, 0px))" }}>
+            <h3 className="text-base font-bold text-destructive mb-2">حذف الحساب نهائياً</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed mb-3">
+              سيُحذف حسابك وكل ما يخصّه: قوائمك، تقييماتك وصورها، الأماكن المحفوظة،
+              زياراتك، ومتابعاتك. <span className="text-foreground font-semibold">لا يمكن التراجع عن هذا الإجراء.</span>
+            </p>
+            <label htmlFor="delete-confirm" className="text-xs text-muted-foreground block mb-1.5">
+              اكتب «{DELETE_PHRASE}» للتأكيد
+            </label>
+            <input
+              id="delete-confirm"
+              value={deleteConfirmText}
+              onChange={e => setDeleteConfirmText(e.target.value)}
+              autoComplete="off"
+              className="w-full bg-input-background border border-border rounded-2xl px-4 py-3 text-sm text-foreground mb-4 focus:outline-none focus:ring-2 focus:ring-destructive/30"
+            />
+            <button
+              onClick={confirmDelete}
+              disabled={deleting || deleteConfirmText.trim() !== DELETE_PHRASE}
+              className="w-full py-3.5 rounded-2xl bg-destructive text-white text-sm font-semibold disabled:opacity-40"
+            >
+              {deleting ? "جارٍ الحذف…" : "حذف حسابي نهائياً"}
+            </button>
+            <button
+              onClick={() => setShowDeleteModal(false)}
+              disabled={deleting}
+              className="w-full mt-2 py-3 text-sm text-muted-foreground font-medium disabled:opacity-40"
+            >
+              إلغاء
+            </button>
+          </div>
         </div>
       )}
 
