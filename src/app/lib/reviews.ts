@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
 import { mapReviewRow, type Review, type ReviewRow } from "./types";
+import { stripImageMetadata } from "./images";
 
 const REVIEW_COLS = "id, user_id, rating, comment, photos, created_at, profiles(name, avatar_url)";
 
@@ -9,11 +10,12 @@ export const MAX_REVIEW_PHOTOS = 3;
 export const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 
 export async function uploadReviewPhoto(userId: string, file: File): Promise<string> {
-  if (file.size > MAX_PHOTO_BYTES) throw new Error("photo_too_large");
-  const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
-  const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-  const { error } = await supabase.storage.from("user-photos").upload(path, file, {
-    contentType: file.type || "image/jpeg",
+  // Re-encoded before upload: strips EXIF/GPS and downscales. The bucket is
+  // public, so the original must never leave the device as-is.
+  const clean = await stripImageMetadata(file);
+  const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
+  const { error } = await supabase.storage.from("user-photos").upload(path, clean, {
+    contentType: "image/jpeg",
   });
   if (error) throw error;
   const { data } = supabase.storage.from("user-photos").getPublicUrl(path);

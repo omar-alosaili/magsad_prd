@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
 import type { Profile } from "./types";
+import { stripImageMetadata } from "./images";
 
 export type ProfileEdit = Partial<Pick<Profile,
   "name" | "bio" | "avatar_url" | "notification_opt_in" | "username" |
@@ -57,11 +58,11 @@ export async function deleteAvatarFiles(userId: string, keepPath?: string): Prom
 }
 
 export async function uploadAvatar(userId: string, file: File): Promise<string> {
-  if (file.size > MAX_AVATAR_BYTES) throw new Error("avatar_too_large");
-  const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
-  const path = `${userId}/avatar-${Date.now()}.${ext}`;
-  const { error } = await supabase.storage.from("user-photos").upload(path, file, {
-    contentType: file.type || "image/jpeg",
+  // Same treatment as review photos — see lib/images.ts.
+  const clean = await stripImageMetadata(file);
+  const path = `${userId}/avatar-${Date.now()}.jpg`;
+  const { error } = await supabase.storage.from("user-photos").upload(path, clean, {
+    contentType: "image/jpeg",
   });
   if (error) throw error;
   // Deliberately NOT cleaning up here: the profile row still points at the

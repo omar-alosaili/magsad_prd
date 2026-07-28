@@ -11,6 +11,7 @@ import { toast } from "../lib/toast";
 import { Button } from "./Button";
 import { sizedImage, IMG, PLACE_IMAGE_FALLBACK, originalImage } from "../lib/types";
 import { useSheetA11y } from "./Sheet";
+import { MAX_SOURCE_BYTES } from "../lib/images";
 
 type Props = {
   userId: string | null;
@@ -76,7 +77,7 @@ export function ProfilePage({ userId, currentUser, onPlaceClick, onListClick, on
 
   const pickAvatar = (file: File | null | undefined) => {
     if (!file || !userId || avatarUploading) return;
-    if (file.size > MAX_AVATAR_BYTES) { toast.error("الصورة أكبر من 5MB — اختر صورة أصغر"); return; }
+    if (file.size > MAX_SOURCE_BYTES) { toast.error("الصورة كبيرة جداً — اختر صورة أصغر"); return; }
     setAvatarUploading(true);
     uploadAvatar(userId, file)
       .then(setEditAvatarUrl)

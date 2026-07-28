@@ -20,6 +20,7 @@ import { OpeningHours } from "./OpeningHours";
 import type { Review } from "../lib/types";
 import { sizedImage, IMG, PLACE_IMAGE_FALLBACK, originalImage } from "../lib/types";
 import { useSheetA11y } from "./Sheet";
+import { MAX_SOURCE_BYTES } from "../lib/images";
 
 type Props = {
   placeId: string;
@@ -117,7 +118,9 @@ export function PlacePage({ placeId, userId, onBack, savedPlaces, onSave, onList
   const addPhotoFile = (file: File | null | undefined) => {
     if (!file || !userId || photoUploading) return;
     if (reviewPhotos.length >= MAX_REVIEW_PHOTOS) { toast.info(`الحد الأقصى ${MAX_REVIEW_PHOTOS} صور`); return; }
-    if (file.size > MAX_PHOTO_BYTES) { toast.error("الصورة أكبر من 5MB — اختر صورة أصغر"); return; }
+    // The source cap is generous because we re-encode before upload; a
+    // typical phone photo lands well under a megabyte afterwards.
+    if (file.size > MAX_SOURCE_BYTES) { toast.error("الصورة كبيرة جداً — اختر صورة أصغر"); return; }
     setPhotoUploading(true);
     uploadReviewPhoto(userId, file)
       .then(url => setReviewPhotos(prev => [...prev, url]))
