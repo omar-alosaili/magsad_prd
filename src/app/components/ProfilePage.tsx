@@ -450,8 +450,14 @@ export function ProfilePage({ userId, currentUser, onPlaceClick, onListClick, on
           >
             <LogOut size={15} /> تسجيل الخروج
           </button>
+          {/* Legal — static pages under public/, served ahead of the SPA rewrite */}
+          <p className="text-xs text-muted-foreground text-center mt-5">
+            <a href="/privacy.html" className="text-accent font-medium">سياسة الخصوصية</a>
+            <span className="mx-2">·</span>
+            <a href="/terms.html" className="text-accent font-medium">الشروط والأحكام</a>
+          </p>
           {/* Third-party data attribution (Apache 2.0 notice in the repo) */}
-          <p className="text-[10px] text-muted-foreground text-center mt-4">
+          <p className="text-[10px] text-muted-foreground text-center mt-3">
             تتضمن بيانات الأماكن محتوى من Foursquare OS Places (Apache 2.0) وخرائط قوقل
           </p>
         </div>

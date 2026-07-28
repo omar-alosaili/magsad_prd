@@ -398,6 +398,16 @@ export function OnboardingScreen({ onComplete }: Props) {
                 إرسال رمز التحقق
               </Button>
 
+              {/* Consent is only meaningful at the point of signing up */}
+              {!isLogin && (
+                <p className="text-center text-xs text-muted-foreground leading-relaxed">
+                  بإنشائك حساباً فإنك توافق على{" "}
+                  <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-accent font-semibold">الشروط والأحكام</a>
+                  {" "}و{" "}
+                  <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-accent font-semibold">سياسة الخصوصية</a>
+                </p>
+              )}
+
               <p className="text-center text-sm text-muted-foreground pb-2">
                 {isLogin ? "ما عندك حساب؟ " : "عندك حساب؟ "}
                 <button onClick={() => setIsLogin(!isLogin)} className="text-accent font-bold">
