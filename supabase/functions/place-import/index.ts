@@ -21,13 +21,30 @@ function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { ...CORS, "Content-Type": "application/json" } });
 }
 
+// Field masks decide which SKU Google bills, so preview and import ask for
+// different things on purpose.
+//
+// The atmosphere fields (outdoorSeating, goodForChildren, …) are the ONLY
+// reason a request bills at "Place Details Enterprise + Atmosphere" instead
+// of plain "Enterprise". The preview panel never displays them — it shows
+// name, type, district, rating, photo count, hours and contact — so asking
+// for them on every tap paid the higher rate for data nobody looked at.
+//
+// Splitting the masks also splits the billing: each SKU carries its OWN
+// free monthly allowance, so browsing taps no longer eat the same quota the
+// actual imports draw from.
+//
+// NOTE: rating, userRatingCount, opening hours, website and phone are all
+// Enterprise-tier fields, so the preview cannot drop to Pro without losing
+// exactly the signals an admin needs to judge a place.
 const ATMOSPHERE = "outdoorSeating,goodForChildren,goodForGroups,menuForChildren,servesBreakfast";
-const DETAIL_MASK = [
+const BASE_FIELDS = [
   "id", "displayName", "formattedAddress", "location", "types", "primaryType",
   "businessStatus", "photos", "rating", "userRatingCount",
   "regularOpeningHours", "currentOpeningHours", "websiteUri", "nationalPhoneNumber",
-  ATMOSPHERE,
-].join(",");
+];
+const PREVIEW_MASK = BASE_FIELDS.join(",");                  // → Enterprise
+const DETAIL_MASK = [...BASE_FIELDS, ATMOSPHERE].join(",");  // → Enterprise + Atmosphere
 
 const MAX_PHOTOS = 3;
 const PHOTO_WIDTH = 800;
@@ -156,7 +173,7 @@ Deno.serve(async (req: Request) => {
   // --- Google Place Details (ar/SA is mandatory, see header comment) ---
   const res = await fetch(
     `https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}?languageCode=ar&regionCode=SA`,
-    { headers: { "X-Goog-Api-Key": googleKey, "X-Goog-FieldMask": DETAIL_MASK } },
+    { headers: { "X-Goog-Api-Key": googleKey, "X-Goog-FieldMask": preview ? PREVIEW_MASK : DETAIL_MASK } },
   );
   if (!res.ok) {
     const detail = await res.text();
