@@ -25,8 +25,14 @@ export function AdminMapPicker({ onClose, onImported }: Props) {
   const [importing, setImporting] = useState(false);
   const sheet = useSheetA11y(true, onClose, "إضافة مكان من الخريطة");
 
-  const handleMapClick = (ev: { detail: { placeId?: string | null; latLng?: { lat: number; lng: number } | null } }) => {
+  const handleMapClick = (ev: {
+    detail: { placeId?: string | null; latLng?: { lat: number; lng: number } | null };
+    stop?: () => void;
+  }) => {
     const placeId = ev.detail?.placeId;
+    // Suppress Google's own POI bubble — it renders "Place info couldn't
+    // load" over our map because we never asked it to fetch details.
+    ev.stop?.();
     if (!placeId) {
       // Tapping empty map (a road, a building with no listing) gives no id.
       toast.info("اضغط على اسم أو أيقونة المكان نفسه على الخريطة");
