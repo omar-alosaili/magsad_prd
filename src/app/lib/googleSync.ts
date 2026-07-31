@@ -222,3 +222,50 @@ export async function runPlaceScan(
   if (finErr) throw finErr;
   return { scanned: cursor, changes, apiCalls, duplicates: fin?.duplicatesProposed ?? 0 };
 }
+
+// ---------- Admin: add a place by clicking it on Google Maps ----------
+
+export type MapPickPreview = {
+  googlePlaceId: string;
+  name: string;
+  nameEn: string;
+  type: "كافيه" | "مطعم";
+  district: string;
+  address: string;
+  rating: number | null;
+  reviewCount: number | null;
+  photoCount: number;
+  hasHours: boolean;
+  website: string | null;
+  phone: string | null;
+  businessStatus: string | null;
+  isOpen: boolean;
+};
+
+export type MapPickResult = {
+  preview: true;
+  place: MapPickPreview;
+  alreadyExists: { id: string; name: string; status: string } | null;
+  outsideArea: boolean;
+  distanceKm: number;
+};
+
+// Look up a clicked POI without writing anything. Cheap enough to run on
+// every tap: no photo fetches, no insert.
+export async function previewMapPlace(placeId: string): Promise<MapPickResult> {
+  const { data, error } = await supabase.functions.invoke("place-import", { body: { placeId, preview: true } });
+  if (error) throw error;
+  if ((data as { error?: string })?.error) throw new Error((data as { error: string }).error);
+  return data as MapPickResult;
+}
+
+// Commit the import: fetches + re-hosts photos, scores, inserts, audits.
+export async function importMapPlace(placeId: string): Promise<{ id: string; name: string; qualityScore: number; status: string }> {
+  const { data, error } = await supabase.functions.invoke("place-import", { body: { placeId } });
+  if (error) throw error;
+  const res = data as { ok?: boolean; error?: string; place?: { id: string; name: string; quality_score: number; status: string } };
+  if (res?.error === "duplicate") throw new Error("duplicate");
+  if (!res?.ok || !res.place) throw new Error(res?.error ?? "import_failed");
+  invalidatePlacesCache();
+  return { id: res.place.id, name: res.place.name, qualityScore: res.place.quality_score, status: res.place.status };
+}

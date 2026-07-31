@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, Plus, Check, X, Shield, Flag, Tag, Users, Star, Search, Store, Crown, Coins } from "lucide-react";
+import { ArrowRight, Plus, Check, X, Shield, Flag, Tag, Users, Star, Search, Store, Crown, Coins, MapPin } from "lucide-react";
 import type { Place } from "./data";
 import { getPlaces, getPlaceById, createPlace, updatePlace, deletePlace } from "../lib/places";
 import { clearPlaceReports, PLACE_REPORT_REASONS, REVIEW_REPORT_REASONS } from "../lib/placeReports";
@@ -11,6 +11,7 @@ const REPORT_REASON_LABELS: Record<string, string> = Object.fromEntries(
 import { FEATURES } from "../lib/features";
 import { PLACE_IMAGE_FALLBACK } from "../lib/types";
 import { AdminAnalytics } from "./AdminAnalytics";
+import { AdminMapPicker } from "./AdminMapPicker";
 import { AdminPromotions } from "./AdminPromotions";
 import { Button } from "./Button";
 import { toast } from "../lib/toast";
@@ -244,6 +245,7 @@ export function AdminPanel({ userId, onBack }: Props) {
   };
 
   const [showAddPlaceModal, setShowAddPlaceModal] = useState(false);
+  const [showMapPicker, setShowMapPicker] = useState(false);
   const [newName, setNewName] = useState("");
   const [newType, setNewType] = useState<"كافيه" | "مطعم">("كافيه");
   const [newDistrict, setNewDistrict] = useState("");
@@ -594,12 +596,20 @@ export function AdminPanel({ userId, onBack }: Props) {
           <>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-bold text-muted-foreground">{filteredPlaces.length.toLocaleString("en-US")} مكان</h2>
-              <button
-                onClick={() => setShowAddPlaceModal(true)}
-                className="flex items-center gap-1.5 bg-primary text-primary-foreground px-3 py-2 rounded-full text-xs font-semibold"
-              >
-                <Plus size={13} /> إضافة مكان
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowAddPlaceModal(true)}
+                  className="text-xs text-muted-foreground underline underline-offset-4"
+                >
+                  يدوياً
+                </button>
+                <button
+                  onClick={() => setShowMapPicker(true)}
+                  className="flex items-center gap-1.5 bg-primary text-primary-foreground px-3 py-2 rounded-full text-xs font-semibold"
+                >
+                  <MapPin size={13} /> إضافة من الخريطة
+                </button>
+              </div>
             </div>
             <div className="relative mb-4">
               <Search size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -1215,6 +1225,13 @@ export function AdminPanel({ userId, onBack }: Props) {
       )}
 
       {/* Add Place Modal */}
+      {showMapPicker && (
+        <AdminMapPicker
+          onClose={() => setShowMapPicker(false)}
+          onImported={() => { loadPlaces(); loadOverview(); }}
+        />
+      )}
+
       {showAddPlaceModal && (
         <div className="absolute inset-0 z-50 flex items-end" dir="rtl" {...sheet2}>
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowAddPlaceModal(false)} />
