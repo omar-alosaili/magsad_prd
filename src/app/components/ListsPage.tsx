@@ -162,7 +162,8 @@ export function ListsPage({ userId, isCreator, onPlaceClick, savedPlaces, onSave
       title: newListName,
       description: newListDesc,
       isPublic: newListPublic,
-      coverImage: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&h=400&fit=crop&auto=format",
+      // Left empty on purpose — the first place added supplies the cover.
+      coverImage: "",
       isPaid: newListPaid,
       price: newListPaid ? price : null,
     }).then(newList => {

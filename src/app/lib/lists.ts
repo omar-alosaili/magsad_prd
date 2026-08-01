@@ -132,12 +132,28 @@ export async function deleteList(listId: string): Promise<void> {
 
 // Resolves with whether the place was newly added — re-adding a place the
 // list already contains is not an error, just a no-op the UI can name.
+// Every list used to be created with the same stock coffee photo, so a
+// pizza list looked like a coffee list. A list's cover should come from
+// what is actually in it: the first place added becomes the cover, and it
+// stays until the owner has one (nothing overwrites a real cover later).
+const LEGACY_STOCK_COVER = "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085";
+
 export async function addPlaceToList(listId: string, placeId: string): Promise<"added" | "exists"> {
   const { error } = await supabase.from("list_places").insert({ list_id: listId, place_id: placeId });
   if (error) {
     if (error.code === "23505") return "exists"; // (list_id, place_id) PK
     throw error;
   }
+  // Best-effort: a failed cover update must never fail the add itself.
+  try {
+    const { data: list } = await supabase.from("lists").select("cover_image").eq("id", listId).maybeSingle();
+    const cover = (list?.cover_image ?? "") as string;
+    if (!cover || cover.startsWith(LEGACY_STOCK_COVER)) {
+      const { data: place } = await supabase.from("places").select("image").eq("id", placeId).maybeSingle();
+      const img = (place?.image ?? "") as string;
+      if (img) await supabase.from("lists").update({ cover_image: img }).eq("id", listId);
+    }
+  } catch { /* cover is cosmetic */ }
   return "added";
 }
 

@@ -187,7 +187,9 @@ export function mapListRow(row: ListRow, placeIds: string[] = []): List {
     title: row.title,
     description: row.description,
     isPublic: row.is_public,
-    coverImage: row.cover_image,
+    // Empty until the list has a place (see addPlaceToList) — fall back so
+    // no surface renders a broken image box.
+    coverImage: row.cover_image || PLACE_IMAGE_FALLBACK,
     placeIds,
     likes: row.likes,
     followers: row.followers,
