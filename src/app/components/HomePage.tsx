@@ -532,6 +532,21 @@ export function HomePage({ onPlaceClick, onListClick, onListSelect, onUserClick,
             لا توجد أماكن تطابق "{activeTag}" حالياً
           </div>
         )}
+
+        {/* Footer — what Magsad is, and how to reach us */}
+        <footer className="mt-10 pt-6 px-8 border-t border-border text-center">
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            «مقصد» منصة محلية لاكتشاف الكافيهات والمطاعم في مدينة الرياض.
+          </p>
+          {/* dir=ltr so the address isn't reordered by the RTL layout */}
+          <a
+            href="mailto:support@magsad.app"
+            dir="ltr"
+            className="inline-block mt-2 text-xs text-accent font-semibold"
+          >
+            support@magsad.app
+          </a>
+        </footer>
       </div>
     </>
   );
