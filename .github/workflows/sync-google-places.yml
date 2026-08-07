@@ -22,3 +22,11 @@ jobs:
           SUPABASE_URL: ${{ secrets.PROD_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PROD_SUPABASE_SERVICE_ROLE_KEY }}
           GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
+      # Pre-generate _w430/_w200 variants for any photos the sync (or a
+      # map-picker import) added. Idempotent — existing variants are skipped.
+      # This replaces Supabase image transformations, which bill per origin
+      # image and exhausted the Pro quota (100/month) within days.
+      - run: node scripts/generate-image-variants.mjs
+        env:
+          SUPABASE_URL: ${{ secrets.PROD_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PROD_SUPABASE_SERVICE_ROLE_KEY }}

@@ -120,22 +120,32 @@ export const PLACE_IMAGE_FALLBACK =
 export const IMG = { thumb: 200, card: 430, hero: 860 } as const;
 
 // Undo sizedImage(): the original object URL, for onError retries.
+// Handles both the current _w{N}.jpg variant convention and the legacy
+// /render/image/ transform URLs (still live in cached HTML for a while).
 export function originalImage(url: string): string {
-  return url.includes("/storage/v1/render/image/public/")
-    ? url.replace("/storage/v1/render/image/public/", "/storage/v1/object/public/").split("?")[0]
-    : url;
+  if (url.includes("/storage/v1/render/image/public/")) {
+    return url.replace("/storage/v1/render/image/public/", "/storage/v1/object/public/").split("?")[0];
+  }
+  const m = url.match(/^(.+)_w(?:200|430)\.jpg$/);
+  if (m) return `${m[1]}.jpg`;
+  return url;
 }
 
-export function sizedImage(url: string, width: number, quality = 70): string {
-  // Only our own storage objects can be transformed; external URLs (the
-  // Unsplash fallback, anything an admin pasted) pass through untouched.
-  if (!url.includes("/storage/v1/object/public/")) return url;
-  const base = url.replace("/storage/v1/object/public/", "/storage/v1/render/image/public/");
-  // resize=contain is REQUIRED: passing width alone makes the transformer
-  // center-crop to that width while keeping the original height (an 800x600
-  // photo came back 430x600 — the middle slice), which silently mangled every
-  // image. contain scales the whole frame and is smaller on the wire too.
-  return `${base}${base.includes("?") ? "&" : "?"}width=${width}&resize=contain&quality=${quality}`;
+export function sizedImage(url: string, width: number): string {
+  // COST NOTE: this used to rewrite to Supabase's /render/image/ endpoint,
+  // which bills per DISTINCT origin image ($5/1,000 after just 100/month on
+  // Pro) — with a 14k-photo catalog that blew the plan quota in days. The
+  // resized copies are now pre-generated ONCE and stored as plain files
+  // (see scripts/generate-image-variants.mjs), so serving them costs
+  // nothing. The naming convention is <path>_w{width}.jpg next to the
+  // original; the shared onError fallback covers any variant that does not
+  // exist yet by retrying the original object.
+  if (!url.includes("/storage/v1/object/public/place-photos/")) return url;
+  const clean = url.split("?")[0];
+  const m = clean.match(/^(.+)\.(jpe?g|png|webp)$/i);
+  if (!m) return url;
+  const variant = width <= 200 ? 200 : 430; // two variants cover thumb + card/hero
+  return `${m[1]}_w${variant}.jpg`;
 }
 
 export function mapPlaceRow(row: PlaceRow): Place {
