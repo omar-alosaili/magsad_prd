@@ -3,6 +3,7 @@ import { getPlaces } from "./places";
 import { getFollowingIds } from "./profile";
 import type { Place } from "../components/data";
 import { FEATURES } from "./features";
+import { SYNONYM_GROUPS } from "./dishVocabulary";
 
 // ============================================================
 // Food discovery: rank places for a dish query ("أفضل كوكيز في
@@ -50,34 +51,10 @@ const FILLER = new Set([
   "في", "من", "الرياض", "رياض", "بالرياض", "مكان", "اماكن", "محل", "محلات",
 ]);
 
-// Dish synonym groups — Arabic and English variants search as one.
-// The FIRST entry is the display form shown in the results header, so it
-// keeps proper spelling (ة not the normalized ه). All raw spellings are
-// listed explicitly because DB-side ilike gets the RAW forms.
-const SYNONYMS: string[][] = [
-  ["كوكيز", "كوكي", "cookie", "cookies"],
-  ["بيتزا", "pizza"],
-  ["برجر", "برغر", "برقر", "همبرجر", "burger", "burgers"],
-  ["قهوة", "قهوه", "كوفي", "coffee", "اسبريسو", "espresso"],
-  ["ماتشا", "matcha"],
-  ["كنافة", "كنافه", "kunafa", "knafeh", "kunafah"],
-  ["تشيزكيك", "cheesecake", "تشيز كيك"],
-  ["كرواسون", "كرواسان", "كرسون", "croissant"],
-  ["سوشي", "sushi"],
-  ["شاورما", "shawarma"],
-  ["دونات", "دوناتس", "donut", "donuts", "doughnut"],
-  ["آيس كريم", "ايس كريم", "بوظة", "بوظه", "جيلاتو", "ice cream", "gelato"],
-  ["فطور", "فطار", "breakfast"],
-  ["كيك", "كيكة", "كيكه", "cake"],
-  ["شوكولاتة", "شوكولاته", "شوكلت", "chocolate"],
-  ["باستا", "معكرونة", "معكرونه", "مكرونة", "مكرونه", "pasta"],
-  ["ستيك", "steak"],
-  ["مندي", "mandi"],
-  ["كبسة", "كبسه", "kabsa"],
-  ["وافل", "waffle"],
-  ["بان كيك", "بانكيك", "pancake"],
-  ["مشويات", "مشاوي", "grill", "bbq"],
-];
+// Dish synonym groups now live in ONE place (lib/dishVocabulary.ts) so the
+// food search and the dish recommendations can never drift apart — the
+// picker writes the same slugs this search ranks by.
+const SYNONYMS: string[][] = SYNONYM_GROUPS;
 
 export type ExpandedQuery = {
   term: string;           // display form
