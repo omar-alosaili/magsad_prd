@@ -18,8 +18,6 @@ import {
 import { toast } from "../lib/toast";
 import { OpeningHours } from "./OpeningHours";
 import type { Review } from "../lib/types";
-import { DISH_VOCABULARY } from "../lib/dishVocabulary";
-import { getPlaceDishes, getMyDishes, setMyDishes as setMyDishesOnServer, type DishCount } from "../lib/dishes";
 import { sizedImage, IMG, PLACE_IMAGE_FALLBACK, originalImage } from "../lib/types";
 import { useSheetA11y } from "./Sheet";
 import { MAX_SOURCE_BYTES } from "../lib/images";
@@ -53,13 +51,6 @@ export function PlacePage({ placeId, userId, onBack, savedPlaces, onSave, onList
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [reviewsFailed, setReviewsFailed] = useState(false);
   const [reviewPhotos, setReviewPhotos] = useState<string[]>([]);
-  // Dish recommendations — the shared vocabulary, picked as chips. This is
-  // the first-party answer to "what do people recommend here?"; Google's
-  // review text can't legally be mined for it.
-  const [dishCounts, setDishCounts] = useState<DishCount[]>([]);
-  const [myDishes, setMyDishes] = useState<string[]>([]);
-  // The picker's working selection while the form is open
-  const [pendingDishes, setPendingDishes] = useState<string[]>([]);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportReason, setReportReason] = useState<PlaceReportReason>("closed");
@@ -94,10 +85,6 @@ export function PlacePage({ placeId, userId, onBack, savedPlaces, onSave, onList
       .catch(() => setPlaceMissing(true));
     getListsContainingPlace(placeId).then(setPlaceLists).catch(console.error);
     getReviewsForPlace(placeId).then(setReviews).catch(() => setReviewsFailed(true));
-    setDishCounts([]);
-    setMyDishes([]);
-    getPlaceDishes(placeId, userId).then(setDishCounts).catch(console.error);
-    if (userId) getMyDishes(placeId, userId).then(setMyDishes).catch(console.error);
     setLocalVisitStatus(null);
     visitTouched.current = false;
     if (userId) {
@@ -159,12 +146,6 @@ export function PlacePage({ placeId, userId, onBack, savedPlaces, onSave, onList
         // the shared catalog cache so other screens pick it up too.
         invalidatePlacesCache();
         getPlaceById(placeId).then(p => { if (p) setPlace(p); }).catch(() => {});
-        // Recommendations are saved after the review lands: they are an
-        // enrichment, so a failure here must not lose the user's review.
-        setMyDishes(pendingDishes);
-        setMyDishesOnServer(placeId, userId, pendingDishes)
-          .then(() => getPlaceDishes(placeId, userId).then(setDishCounts))
-          .catch(() => toast.info("حُفظ تقييمك، لكن تعذّر حفظ الأطباق الموصى بها"));
       })
       .catch(() => toast.error("تعذّر نشر التقييم — حاول مجدداً"))
       .finally(() => setReviewSubmitting(false));
@@ -440,28 +421,6 @@ export function PlacePage({ placeId, userId, onBack, savedPlaces, onSave, onList
 
         {tab === "info" && (
           <div>
-            {/* Only renders once someone has actually recommended something —
-                an always-present empty section reads as broken, which is how
-                the dead «للعمل» filter looked before it was removed. */}
-            {dishCounts.length > 0 && (
-              <div className="mb-5">
-                <h3 className="text-sm font-bold text-foreground mb-2">ينصح به الزوار</h3>
-                <div className="flex flex-wrap gap-2">
-                  {dishCounts.map(({ dish, count, recommendedByMe }) => (
-                    <span
-                      key={dish.slug}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium ${
-                        recommendedByMe ? "bg-accent/12 text-accent" : "bg-muted text-foreground"
-                      }`}
-                      title={recommendedByMe ? "أنت تنصح به" : undefined}
-                    >
-                      <span>{dish.emoji} {dish.name}</span>
-                      <span className="text-[11px] opacity-70">{count.toLocaleString("en-US")}</span>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
             {/* Google-synced places carry no description — render nothing
                 rather than an empty block that reads as a broken page. */}
             {place.description.trim() && (
@@ -502,9 +461,6 @@ export function PlacePage({ placeId, userId, onBack, savedPlaces, onSave, onList
                   onClick={() => setShowReviewForm(v => {
                     // Editing: prefill the form with the existing review
                     if (!v && myReview) { setReviewRating(myReview.rating); setReviewComment(myReview.comment); setReviewPhotos(myReview.photos); }
-                    // Start from what this user already recommends here, so
-                    // reopening the form doesn't look like they picked nothing.
-                    if (!v) setPendingDishes(myDishes);
                     return !v;
                   })}
                   className="flex items-center gap-1 text-sm text-accent font-medium"
@@ -546,32 +502,6 @@ export function PlacePage({ placeId, userId, onBack, savedPlaces, onSave, onList
                 {!reviewComment.trim() && (
                   <p className="text-xs text-muted-foreground mb-2">اكتب تعليقاً قصيراً لنشر تقييمك</p>
                 )}
-                {/* Shared-vocabulary dish tags: the collection side of
-                    "what people recommend here". Optional — never blocks
-                    publishing a review. */}
-                <div className="mb-3">
-                  <p className="text-xs text-muted-foreground mb-2">وش تنصح فيه هنا؟ (اختياري)</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {DISH_VOCABULARY.map(d => {
-                      const on = pendingDishes.includes(d.slug);
-                      return (
-                        <button
-                          key={d.slug}
-                          type="button"
-                          onClick={() => setPendingDishes(prev =>
-                            prev.includes(d.slug) ? prev.filter(x => x !== d.slug) : [...prev, d.slug],
-                          )}
-                          aria-pressed={on}
-                          className={`px-2.5 py-1.5 rounded-xl text-xs font-medium border transition-colors ${
-                            on ? "bg-accent text-white border-accent" : "bg-input-background text-foreground border-border"
-                          }`}
-                        >
-                          {d.emoji} {d.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
                 {/* First-party photos — the long-term answer to the Google photo moat */}
                 <div className="flex items-center gap-2 mb-3 flex-wrap">
                   {reviewPhotos.map(url => (
