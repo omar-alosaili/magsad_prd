@@ -441,7 +441,6 @@ export function PlacePage({ placeId, userId, onBack, savedPlaces, onSave, onList
                     </span>
                   ))}
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-2">من المكان نفسه</p>
               </div>
             )}
             {/* Google-synced places carry no description — render nothing
