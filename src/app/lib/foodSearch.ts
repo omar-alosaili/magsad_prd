@@ -12,7 +12,7 @@ import { FEATURES } from "./features";
 // own name/tags — enriched by Google rating data as a quality prior.
 // ============================================================
 
-export type FoodSource = "توصيات مقصد" | "قوائم مقصد" | "بيانات قوقل";
+export type FoodSource = "توصيات مقصد" | "قوائم مقصد" | "أطباق المكان" | "بيانات قوقل";
 
 export type FoodResult = {
   place: Place;
@@ -131,6 +131,9 @@ const W_LIST = 0.6;            // place appears in a matching list
 const W_NAME = 1.0;            // dish in the place's own name
 const W_TAG = 0.5;             // dish in tags/category/description
 const W_SAVE = 0.15;           // log-scaled saves (popularity)
+// The place itself declaring the dish: authoritative that it EXISTS, but it
+// is the owner's own claim, so it ranks under a Magsad user's recommendation.
+const W_MENU = 0.9;
 
 // Saves are only fetched for the leaders — keeps the .in() id list
 // (and the response rows) bounded no matter how broad the dish is.
@@ -147,6 +150,7 @@ type Candidate = {
   listTitles: string[];
   nameMatch: boolean;
   tagMatch: boolean;
+  menuItems: string[];  // owner-declared dishes that matched
   saves: number;
 };
 
@@ -164,10 +168,22 @@ export async function searchFood(rawQuery: string, viewerId: string | null): Pro
   const { term, variants, serverVariants } = expandFoodQuery(rawQuery);
   if (!term) return { term: "", results: [] };
 
-  const [places, following] = await Promise.all([
+  const [places, following, catRes] = await Promise.all([
     getPlaces(),
     viewerId ? getFollowingIds(viewerId).catch(() => new Set<string>()) : Promise.resolve(new Set<string>()),
+    supabase.from("dish_categories").select("slug, synonyms"),
   ]);
+
+  // Which canonical categories does this query mean? Resolved up front so the
+  // menu query can fetch category matches too — «سموذي» must find an item
+  // named «عصير ليمون بالنعناع» whose category is `juice`.
+  const catSynonyms = new Map<string, string[]>(
+    ((catRes.data ?? []) as { slug: string; synonyms: string[] | null }[])
+      .map(r => [r.slug, (r.synonyms ?? []).map(normalize)]),
+  );
+  const wantedCats = [...catSynonyms.entries()]
+    .filter(([, syns]) => syns.some(sy => variants.includes(sy) || sy.includes(variants[0])))
+    .map(([slug]) => slug);
 
   // DB-side patterns use RAW spellings (ilike does no Arabic folding).
   const reviewOr = serverVariants.map(v => `comment.ilike.%${v}%`).join(",");
@@ -175,9 +191,15 @@ export async function searchFood(rawQuery: string, viewerId: string | null): Pro
   let listsQ = supabase.from("lists").select("id, title, list_places(place_id)").eq("is_public", true).or(listOr);
   if (!FEATURES.paidLists) listsQ = listsQ.eq("is_paid", false);
 
-  const [reviewsRes, listsRes] = await Promise.all([
+  // Owner-declared dishes: match the dish NAME, and the canonical category
+  // so «كوكيز» finds a place whose item is «كوكيز الشوكولاتة بالملح».
+  const menuConds = serverVariants.map(v => `name.ilike.%${v}%`);
+  if (wantedCats.length) menuConds.push(`category_slug.in.(${wantedCats.join(",")})`);
+
+  const [reviewsRes, listsRes, menuRes] = await Promise.all([
     supabase.from("reviews").select("place_id, user_id, rating, comment, profiles(name, is_creator)").or(reviewOr),
     listsQ,
+    supabase.from("place_menu_items").select("place_id, name, category_slug").or(menuConds.join(",")),
   ]);
   if (reviewsRes.error) throw reviewsRes.error;
   if (listsRes.error) throw listsRes.error;
@@ -189,7 +211,7 @@ export async function searchFood(rawQuery: string, viewerId: string | null): Pro
     if (!place) return null;
     let c = candidates.get(placeId);
     if (!c) {
-      c = { place, reviewSignal: 0, recommenders: new Set(), comments: [], listTitles: [], nameMatch: false, tagMatch: false, saves: 0 };
+      c = { place, reviewSignal: 0, recommenders: new Set(), comments: [], listTitles: [], nameMatch: false, tagMatch: false, menuItems: [], saves: 0 };
       candidates.set(placeId, c);
     }
     return c;
@@ -217,6 +239,17 @@ export async function searchFood(rawQuery: string, viewerId: string | null): Pro
     }
   }
 
+  // 2b. Owner-declared menu signal. Matches the dish name directly, or the
+  // canonical category, so «كوكيز» finds «كوكيز الشوكولاتة بالملح».
+  const wantedCatSet = new Set(wantedCats);
+  for (const m of (menuRes.data ?? []) as { place_id: string; name: string; category_slug: string | null }[]) {
+    const nameHit = variants.some(v => normalize(m.name).includes(v));
+    const catHit = !!m.category_slug && wantedCatSet.has(m.category_slug);
+    if (!nameHit && !catHit) continue;
+    const c = getCand(m.place_id);
+    if (c && !c.menuItems.includes(m.name)) c.menuItems.push(m.name);
+  }
+
   // 3. Place-text signal — the place itself is about the dish
   //    (normalized on BOTH sides, so folding is safe here)
   for (const p of places) {
@@ -236,7 +269,8 @@ export async function searchFood(rawQuery: string, viewerId: string | null): Pro
     c.reviewSignal +
     Math.min(3, c.listTitles.length) * W_LIST +
     (c.nameMatch ? W_NAME : 0) +
-    (c.tagMatch ? W_TAG : 0);
+    (c.tagMatch ? W_TAG : 0) +
+    (c.menuItems.length ? W_MENU : 0);
 
   // Rank once without saves, then fetch saves for the leaders only —
   // bounds the .in() list and the row count for arbitrarily broad terms.
@@ -269,6 +303,10 @@ export async function searchFood(rawQuery: string, viewerId: string | null): Pro
     if (c.listTitles.length > 0) {
       reasons.push(`ورد في قائمة «${c.listTitles[0]}»`);
       sources.push("قوائم مقصد");
+    }
+    if (c.menuItems.length) {
+      reasons.push(`المكان يقدّم «${c.menuItems[0]}»`);
+      sources.push("أطباق المكان");
     }
     if (c.nameMatch) reasons.push("متخصص في هذا الصنف");
     if (c.place.googleRating && (c.place.googleReviewCount ?? 0) > 50) {

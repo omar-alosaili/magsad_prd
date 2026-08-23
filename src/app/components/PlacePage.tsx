@@ -18,6 +18,7 @@ import {
 import { toast } from "../lib/toast";
 import { OpeningHours } from "./OpeningHours";
 import type { Review } from "../lib/types";
+import { getPlaceMenu, type MenuItem } from "../lib/menu";
 import { sizedImage, IMG, PLACE_IMAGE_FALLBACK, originalImage } from "../lib/types";
 import { useSheetA11y } from "./Sheet";
 import { MAX_SOURCE_BYTES } from "../lib/images";
@@ -51,6 +52,8 @@ export function PlacePage({ placeId, userId, onBack, savedPlaces, onSave, onList
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [reviewsFailed, setReviewsFailed] = useState(false);
   const [reviewPhotos, setReviewPhotos] = useState<string[]>([]);
+  // Owner-declared signature dishes — first-party, so we may store and show them
+  const [menu, setMenu] = useState<MenuItem[]>([]);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportReason, setReportReason] = useState<PlaceReportReason>("closed");
@@ -84,6 +87,8 @@ export function PlacePage({ placeId, userId, onBack, savedPlaces, onSave, onList
       .then(p => { setPlace(p); if (!p) setPlaceMissing(true); })
       .catch(() => setPlaceMissing(true));
     getListsContainingPlace(placeId).then(setPlaceLists).catch(console.error);
+    setMenu([]);
+    getPlaceMenu(placeId).then(setMenu).catch(console.error);
     getReviewsForPlace(placeId).then(setReviews).catch(() => setReviewsFailed(true));
     setLocalVisitStatus(null);
     visitTouched.current = false;
@@ -421,6 +426,24 @@ export function PlacePage({ placeId, userId, onBack, savedPlaces, onSave, onList
 
         {tab === "info" && (
           <div>
+            {/* Renders only when the owner has listed dishes — an empty
+                section reads as broken, like the dead «للعمل» filter did. */}
+            {menu.length > 0 && (
+              <div className="mb-5">
+                <h3 className="text-sm font-bold text-foreground mb-2">أطباق مميزة</h3>
+                <div className="flex flex-wrap gap-2">
+                  {menu.map(item => (
+                    <span
+                      key={item.id}
+                      className="px-3 py-1.5 rounded-xl bg-accent/10 text-accent text-xs font-medium"
+                    >
+                      {item.name}
+                    </span>
+                  ))}
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-2">من المكان نفسه</p>
+              </div>
+            )}
             {/* Google-synced places carry no description — render nothing
                 rather than an empty block that reads as a broken page. */}
             {place.description.trim() && (

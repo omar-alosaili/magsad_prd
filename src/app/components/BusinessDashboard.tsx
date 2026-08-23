@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, Bookmark, Star, Plus, Check, X, ChevronLeft, Image as ImageIcon, Sparkles } from "lucide-react";
+import { ArrowRight, Bookmark, Star, Plus, Check, X, ChevronLeft, Image as ImageIcon, Sparkles, Trash2 } from "lucide-react";
 import type { Place, List } from "./data";
 import { getPlaceById, updatePlace, getSavedCountForPlace, getRecentReviewCount } from "../lib/places";
 import { getListsContainingPlace } from "../lib/lists";
@@ -8,6 +8,7 @@ import { getOffersForPlace, createOffer, updateOffer, deactivateOffer, type Offe
 import { uploadPlacePhoto } from "../lib/storage";
 import { updateProfile } from "../lib/profile";
 import { toast } from "../lib/toast";
+import { getPlaceMenu, getDishCategories, addMenuItem, deleteMenuItem, type MenuItem, type DishCategory } from "../lib/menu";
 import { Button } from "./Button";
 import { useSheetA11y } from "./Sheet";
 import { PLACE_IMAGE_FALLBACK, originalImage } from "../lib/types";
@@ -22,7 +23,7 @@ export function BusinessDashboard({ userId, placeId, onBack }: Props) {
   const [promoNote, setPromoNote] = useState("");
   const [promoSending, setPromoSending] = useState(false);
   const [promoError, setPromoError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"overview" | "offers" | "settings">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "menu" | "offers" | "settings">("overview");
   const [savedCount, setSavedCount] = useState(0);
   const [recentReviews, setRecentReviews] = useState(0);
   const [listsContaining, setListsContaining] = useState<List[]>([]);
@@ -44,6 +45,13 @@ export function BusinessDashboard({ userId, placeId, onBack }: Props) {
   const [editBookingLink, setEditBookingLink] = useState("");
 
   const [uploading, setUploading] = useState(false);
+  // «أطباق مميزة» — owner-declared signature dishes. First-party data, so
+  // unlike anything mined from Google reviews it is ours to store and index.
+  const [menu, setMenu] = useState<MenuItem[]>([]);
+  const [categories, setCategories] = useState<DishCategory[]>([]);
+  const [newDishName, setNewDishName] = useState("");
+  const [newDishCategory, setNewDishCategory] = useState<string | null>(null);
+  const [addingDish, setAddingDish] = useState(false);
   const [notifEnabled, setNotifEnabled] = useState(false);
   const sheet1 = useSheetA11y(showOfferModal, () => setShowOfferModal(false), "عرض جديد");
   const sheet2 = useSheetA11y(showEditPlaceModal, () => setShowEditPlaceModal(false), "تعديل بيانات المكان");
@@ -59,6 +67,8 @@ export function BusinessDashboard({ userId, placeId, onBack }: Props) {
     getListsContainingPlace(placeId).then(setListsContaining).catch(console.error);
     getOffersForPlace(placeId).then(setOffers).catch(console.error);
     getMyPromotions(placeId).then(setPromotions).catch(console.error);
+    getPlaceMenu(placeId).then(setMenu).catch(console.error);
+    getDishCategories().then(setCategories).catch(console.error);
   };
 
   useEffect(load, [placeId]);
@@ -97,6 +107,28 @@ export function BusinessDashboard({ userId, placeId, onBack }: Props) {
   }, [place]);
 
   if (!place) return null;
+
+  const submitDish = () => {
+    const name = newDishName.trim();
+    if (!name || addingDish) return;
+    setAddingDish(true);
+    addMenuItem({ placeId, name, categorySlug: newDishCategory, ownerId: userId })
+      .then(item => {
+        setMenu(prev => [...prev, item]);
+        setNewDishName("");
+        setNewDishCategory(null);
+        toast.success("تمت إضافة الطبق");
+      })
+      .catch(e => toast.error(e?.message === "duplicate" ? "هذا الطبق مضاف بالفعل" : "تعذّرت الإضافة — حاول مجدداً"))
+      .finally(() => setAddingDish(false));
+  };
+
+  const removeDish = (item: MenuItem) => {
+    if (!window.confirm(`حذف «${item.name}»؟`)) return;
+    deleteMenuItem(item.id)
+      .then(() => { setMenu(prev => prev.filter(m => m.id !== item.id)); toast.success("تم الحذف"); })
+      .catch(() => toast.error("تعذّر الحذف — حاول مجدداً"));
+  };
 
   const openCreateOffer = () => {
     setEditingOfferId(null);
@@ -197,7 +229,7 @@ export function BusinessDashboard({ userId, placeId, onBack }: Props) {
         </div>
 
         <div className="flex gap-1 bg-muted p-1 rounded-2xl">
-          {(["overview", "offers", "settings"] as const).map(t => (
+          {(["overview", "menu", "offers", "settings"] as const).map(t => (
             <button
               key={t}
               onClick={() => setActiveTab(t)}
@@ -205,7 +237,7 @@ export function BusinessDashboard({ userId, placeId, onBack }: Props) {
                 activeTab === t ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
               }`}
             >
-              {t === "overview" ? "الإحصائيات" : t === "offers" ? "العروض" : "الإعدادات"}
+              {t === "overview" ? "الإحصائيات" : t === "menu" ? "الأطباق" : t === "offers" ? "العروض" : "الإعدادات"}
             </button>
           ))}
         </div>
@@ -303,6 +335,77 @@ export function BusinessDashboard({ userId, placeId, onBack }: Props) {
               )}
             </div>
           </>
+        )}
+
+        {activeTab === "menu" && (
+          <div className="mb-4">
+            <p className="text-xs text-muted-foreground leading-relaxed mb-4">
+              أضف الأطباق التي يشتهر بها مكانك. تظهر للزوار في صفحة المكان،
+              وتساعدهم على إيجادك عند البحث عن طبق معيّن.
+            </p>
+
+            <div className="bg-card border border-border rounded-2xl p-4 mb-4">
+              <label className="text-xs text-muted-foreground mb-1.5 block">اسم الطبق</label>
+              <input
+                value={newDishName}
+                onChange={e => setNewDishName(e.target.value)}
+                placeholder="مثال: كوكيز الشوكولاتة بالملح"
+                maxLength={80}
+                className="w-full bg-input-background border border-border rounded-2xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/30 mb-3"
+              />
+              <label className="text-xs text-muted-foreground mb-2 block">التصنيف (يساعد في البحث)</label>
+              <div className="flex flex-wrap gap-1.5 mb-4 max-h-32 overflow-y-auto">
+                {categories.map(c => {
+                  const on = newDishCategory === c.slug;
+                  return (
+                    <button
+                      key={c.slug}
+                      type="button"
+                      onClick={() => setNewDishCategory(on ? null : c.slug)}
+                      aria-pressed={on}
+                      className={`px-2.5 py-1.5 rounded-xl text-xs font-medium border transition-colors ${
+                        on ? "bg-accent text-white border-accent" : "bg-input-background text-foreground border-border"
+                      }`}
+                    >
+                      {c.emoji} {c.nameAr}
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                onClick={submitDish}
+                disabled={!newDishName.trim() || addingDish}
+                className="w-full py-3 rounded-2xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40"
+              >
+                {addingDish ? "جارٍ الإضافة…" : "إضافة الطبق"}
+              </button>
+            </div>
+
+            {menu.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">لم تُضف أطباقاً بعد</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {menu.map(item => {
+                  const cat = categories.find(c => c.slug === item.categorySlug);
+                  return (
+                    <div key={item.id} className="flex items-center gap-3 bg-card border border-border rounded-2xl px-4 py-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-foreground truncate">{item.name}</p>
+                        {cat && <p className="text-xs text-muted-foreground mt-0.5">{cat.emoji} {cat.nameAr}</p>}
+                      </div>
+                      <button
+                        onClick={() => removeDish(item)}
+                        aria-label={`حذف ${item.name}`}
+                        className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0"
+                      >
+                        <Trash2 size={14} className="text-destructive" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         )}
 
         {activeTab === "offers" && (
