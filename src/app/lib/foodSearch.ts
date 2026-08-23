@@ -1,6 +1,7 @@
 import { supabase } from "./supabase";
 import { getPlaces } from "./places";
 import { getFollowingIds } from "./profile";
+import { getDishCategories } from "./menu";
 import type { Place } from "../components/data";
 import { FEATURES } from "./features";
 
@@ -50,11 +51,20 @@ const FILLER = new Set([
   "في", "من", "الرياض", "رياض", "بالرياض", "مكان", "اماكن", "محل", "محلات",
 ]);
 
-// Dish synonym groups — Arabic and English variants search as one.
-// The FIRST entry is the display form shown in the results header, so it
-// keeps proper spelling (ة not the normalized ه). All raw spellings are
-// listed explicitly because DB-side ilike gets the RAW forms.
-const SYNONYMS: string[][] = [
+// A dish concept and every spelling that means it. `slug` ties the group to
+// a canonical `dish_categories` row so a matched query can pull owner-declared
+// menu items by category, not just by name.
+export type DishGroup = { slug: string | null; terms: string[] };
+
+// OFFLINE FALLBACK ONLY. The live vocabulary is `dish_categories` in the
+// database — see buildGroups(). This list exists so search still works if that
+// fetch fails, and it is deliberately not the source of truth: when the two
+// disagreed, «بسكوت» was a cookie synonym in the DB but missing here, which
+// made «مقهى بسكوت و شاهي» invisible to a «كوكيز» search.
+// The FIRST entry is the display form shown in the results header, so it keeps
+// proper spelling (ة not the normalized ه). All raw spellings are listed
+// explicitly because DB-side ilike gets the RAW forms.
+const FALLBACK_SYNONYMS: string[][] = [
   ["كوكيز", "كوكي", "cookie", "cookies"],
   ["بيتزا", "pizza"],
   ["برجر", "برغر", "برقر", "همبرجر", "burger", "burgers"],
@@ -79,10 +89,27 @@ const SYNONYMS: string[][] = [
   ["مشويات", "مشاوي", "grill", "bbq"],
 ];
 
+const FALLBACK_GROUPS: DishGroup[] = FALLBACK_SYNONYMS.map(terms => ({ slug: null, terms }));
+
+// The live vocabulary: one group per canonical category, carrying its Arabic
+// and English display names plus every listed spelling.
+function buildGroups(
+  categories: { slug: string; nameAr: string; nameEn: string; synonyms: string[] }[],
+): DishGroup[] {
+  if (!categories.length) return FALLBACK_GROUPS;
+  return categories.map(c => ({
+    slug: c.slug,
+    // nameAr first — it is the display term. Empty strings are dropped:
+    // "".indexOf() matches at position 0 and would match every query.
+    terms: [...new Set([c.nameAr, ...c.synonyms, c.nameEn].filter(Boolean))],
+  }));
+}
+
 export type ExpandedQuery = {
   term: string;           // display form
   variants: string[];     // normalized — for client-side matching only
   serverVariants: string[]; // raw spellings — for DB ilike patterns
+  slug: string | null;    // canonical category, when the query names one
 };
 
 // Extract the dish term from a free query and expand its variants.
@@ -90,36 +117,37 @@ export type ExpandedQuery = {
 // "تشيز كيك" contains it); then containment, preferring the variant
 // that appears EARLIEST in the query (head noun: "وافل شوكولاتة" →
 // وافل), tie-broken by length ("تشيز كيك ..." → تشيزكيك, not كيك).
-export function expandFoodQuery(raw: string): ExpandedQuery {
+export function expandFoodQuery(raw: string, groups: DishGroup[] = FALLBACK_GROUPS): ExpandedQuery {
   const rawWords = sanitize(raw).split(/\s+/).filter(w => w && !FILLER.has(normalize(w)));
   const rawCleaned = rawWords.join(" ");
   const cleaned = normalize(rawCleaned);
   // Single characters match half the catalog — wait for real input.
-  if (cleaned.length < 2) return { term: "", variants: [], serverVariants: [] };
+  if (cleaned.length < 2) return { term: "", variants: [], serverVariants: [], slug: null };
 
-  const build = (group: string[]): ExpandedQuery => ({
-    term: group[0],
-    variants: [...new Set([...group.map(normalize), cleaned])],
-    serverVariants: [...new Set([...group.map(g => g.toLowerCase()), rawCleaned, cleaned])],
+  const build = (group: DishGroup): ExpandedQuery => ({
+    term: group.terms[0],
+    variants: [...new Set([...group.terms.map(normalize), cleaned])],
+    serverVariants: [...new Set([...group.terms.map(t => t.toLowerCase()), rawCleaned, cleaned])],
+    slug: group.slug,
   });
 
-  for (const group of SYNONYMS) {
-    if (group.map(normalize).includes(cleaned)) return build(group);
+  for (const group of groups) {
+    if (group.terms.map(normalize).includes(cleaned)) return build(group);
   }
 
-  let best: { group: string[]; pos: number; len: number } | null = null;
-  for (const group of SYNONYMS) {
-    for (const g of group.map(normalize)) {
-      const pos = cleaned.indexOf(g);
+  let best: { group: DishGroup; pos: number; len: number } | null = null;
+  for (const group of groups) {
+    for (const t of group.terms.map(normalize)) {
+      const pos = cleaned.indexOf(t);
       if (pos < 0) continue;
-      if (!best || pos < best.pos || (pos === best.pos && g.length > best.len)) {
-        best = { group, pos, len: g.length };
+      if (!best || pos < best.pos || (pos === best.pos && t.length > best.len)) {
+        best = { group, pos, len: t.length };
       }
     }
   }
   if (best) return build(best.group);
 
-  return { term: rawCleaned, variants: [cleaned], serverVariants: [...new Set([rawCleaned, cleaned])] };
+  return { term: rawCleaned, variants: [cleaned], serverVariants: [...new Set([rawCleaned, cleaned])], slug: null };
 }
 
 // --- Signal weights ------------------------------------------------
@@ -165,25 +193,24 @@ function googlePrior(place: Place): number {
 }
 
 export async function searchFood(rawQuery: string, viewerId: string | null): Promise<{ term: string; results: FoodResult[] }> {
-  const { term, variants, serverVariants } = expandFoodQuery(rawQuery);
-  if (!term) return { term: "", results: [] };
+  // Cheap guard before any network work: under 2 characters names no dish.
+  if (!expandFoodQuery(rawQuery).term) return { term: "", results: [] };
 
-  const [places, following, catRes] = await Promise.all([
+  const [places, following, categories] = await Promise.all([
     getPlaces(),
     viewerId ? getFollowingIds(viewerId).catch(() => new Set<string>()) : Promise.resolve(new Set<string>()),
-    supabase.from("dish_categories").select("slug, synonyms"),
+    getDishCategories().catch(() => []),
   ]);
 
-  // Which canonical categories does this query mean? Resolved up front so the
-  // menu query can fetch category matches too — «سموذي» must find an item
-  // named «عصير ليمون بالنعناع» whose category is `juice`.
-  const catSynonyms = new Map<string, string[]>(
-    ((catRes.data ?? []) as { slug: string; synonyms: string[] | null }[])
-      .map(r => [r.slug, (r.synonyms ?? []).map(normalize)]),
-  );
-  const wantedCats = [...catSynonyms.entries()]
-    .filter(([, syns]) => syns.some(sy => variants.includes(sy) || sy.includes(variants[0])))
-    .map(([slug]) => slug);
+  // Expand against the DB taxonomy so search and the owner-facing category
+  // picker share one vocabulary; falls back to the built-in list if it failed.
+  const { term, variants, serverVariants, slug } = expandFoodQuery(rawQuery, buildGroups(categories));
+  if (!term) return { term: "", results: [] };
+
+  // The canonical category this query means, so the menu query can match by
+  // category as well as name — «سموذي» finds an item named «عصير ليمون
+  // بالنعناع» filed under `juice`.
+  const wantedCats = slug ? [slug] : [];
 
   // DB-side patterns use RAW spellings (ilike does no Arabic folding).
   const reviewOr = serverVariants.map(v => `comment.ilike.%${v}%`).join(",");
