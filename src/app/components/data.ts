@@ -29,6 +29,9 @@ export type Place = {
   googleRating: number | null;
   googleReviewCount: number | null;
   googlePlaceId: string | null;
+  // Google's fine-grained type (pizza_restaurant, ice_cream_shop…). The
+  // catalog's only broad dish signal — see dish_categories.google_types.
+  primaryType: string | null;
   qualityScore: number;
   qualityFlags: string[];
   status: "published" | "search_only" | "quarantined" | "retired";

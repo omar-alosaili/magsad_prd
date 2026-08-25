@@ -11,7 +11,7 @@ const PLACE_CARD_COLS =
   "id, name, name_en, type, category, district, image, price_level, rating, review_count, " +
   "is_family_friendly, is_kids_friendly, is_work_friendly, has_outdoor_seating, has_parking, " +
   "is_open, is_new, is_verified, tags, latitude, longitude, " +
-  "google_rating, google_review_count, quality_score, quality_flags, status, brand, created_at";
+  "google_rating, google_review_count, primary_type, quality_score, quality_flags, status, brand, created_at";
 
 async function fetchAllPlaces(): Promise<Place[]> {
   // Supabase caps responses at 1000 rows — page through so a city-wide

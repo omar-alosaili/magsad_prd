@@ -65,8 +65,13 @@ function projectToMap(lat: number, lng: number) {
 // paginate the list and grow it on demand.
 const LIST_PAGE_SIZE = 60;
 
-// Suggested dishes shown before the user types in the Food tab
-const FOOD_SUGGESTIONS = ["كوكيز 🍪", "بيتزا 🍕", "برجر 🍔", "ماتشا 🍵", "كنافة 🥮", "فطور 🍳", "آيس كريم 🍨", "سوشي 🍣"];
+// Suggested dishes shown before the user types in the Food tab.
+// These are the tab's shop window, so every one of them must actually return
+// a full set of places. كوكيز، ماتشا and كنافة used to sit here and returned
+// 2–3 results each: Google publishes no place type for them, so they reach
+// only places that spell the dish out in their own NAME. They are still
+// searchable — they just can't carry the empty state.
+const FOOD_SUGGESTIONS = ["قهوة ☕", "برجر 🍔", "بيتزا 🍕", "شاورما 🌯", "دجاج 🍗", "فطور 🍳", "حلى 🍮", "آيس كريم 🍨"];
 
 export function ExplorePage({ onPlaceClick, onUserClick, currentUserId, savedPlaces, onSave, initialQuery }: Props) {
   const [mainTab, setMainTab] = useState<"places" | "users" | "food">("places");

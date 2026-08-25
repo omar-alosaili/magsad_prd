@@ -14,6 +14,9 @@ export type DishCategory = {
   nameEn: string;
   emoji: string;
   synonyms: string[];
+  // Google primaryType values that imply this category (pizza_restaurant →
+  // pizza). Empty for dishes Google has no type for — cookies, matcha, kunafa.
+  googleTypes: string[];
 };
 
 export type MenuItem = {
@@ -26,14 +29,18 @@ export type MenuItem = {
   sort: number;
 };
 
-type CategoryRow = { slug: string; name_ar: string; name_en: string; emoji: string; synonyms: string[] | null };
+type CategoryRow = {
+  slug: string; name_ar: string; name_en: string; emoji: string;
+  synonyms: string[] | null; google_types: string[] | null;
+};
 type ItemRow = {
   id: string; place_id: string; name: string; category_slug: string | null;
   description: string; is_signature: boolean; sort: number;
 };
 
 const mapCategory = (r: CategoryRow): DishCategory => ({
-  slug: r.slug, nameAr: r.name_ar, nameEn: r.name_en, emoji: r.emoji, synonyms: r.synonyms ?? [],
+  slug: r.slug, nameAr: r.name_ar, nameEn: r.name_en, emoji: r.emoji,
+  synonyms: r.synonyms ?? [], googleTypes: r.google_types ?? [],
 });
 
 const mapItem = (r: ItemRow): MenuItem => ({
@@ -49,7 +56,7 @@ export function getDishCategories(): Promise<DishCategory[]> {
   if (!categoryCache) {
     categoryCache = supabase
       .from("dish_categories")
-      .select("slug, name_ar, name_en, emoji, synonyms")
+      .select("slug, name_ar, name_en, emoji, synonyms, google_types")
       .order("sort")
       .then(({ data, error }) => {
         if (error) { categoryCache = null; throw error; }  // never cache a failure

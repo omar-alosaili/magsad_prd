@@ -54,7 +54,7 @@ const FILLER = new Set([
 // A dish concept and every spelling that means it. `slug` ties the group to
 // a canonical `dish_categories` row so a matched query can pull owner-declared
 // menu items by category, not just by name.
-export type DishGroup = { slug: string | null; terms: string[] };
+export type DishGroup = { slug: string | null; terms: string[]; googleTypes: string[] };
 
 // OFFLINE FALLBACK ONLY. The live vocabulary is `dish_categories` in the
 // database — see buildGroups(). This list exists so search still works if that
@@ -89,12 +89,12 @@ const FALLBACK_SYNONYMS: string[][] = [
   ["مشويات", "مشاوي", "grill", "bbq"],
 ];
 
-const FALLBACK_GROUPS: DishGroup[] = FALLBACK_SYNONYMS.map(terms => ({ slug: null, terms }));
+const FALLBACK_GROUPS: DishGroup[] = FALLBACK_SYNONYMS.map(terms => ({ slug: null, terms, googleTypes: [] }));
 
 // The live vocabulary: one group per canonical category, carrying its Arabic
 // and English display names plus every listed spelling.
 function buildGroups(
-  categories: { slug: string; nameAr: string; nameEn: string; synonyms: string[] }[],
+  categories: { slug: string; nameAr: string; nameEn: string; synonyms: string[]; googleTypes: string[] }[],
 ): DishGroup[] {
   if (!categories.length) return FALLBACK_GROUPS;
   return categories.map(c => ({
@@ -102,6 +102,7 @@ function buildGroups(
     // nameAr first — it is the display term. Empty strings are dropped:
     // "".indexOf() matches at position 0 and would match every query.
     terms: [...new Set([c.nameAr, ...c.synonyms, c.nameEn].filter(Boolean))],
+    googleTypes: c.googleTypes,
   }));
 }
 
@@ -110,6 +111,7 @@ export type ExpandedQuery = {
   variants: string[];     // normalized — for client-side matching only
   serverVariants: string[]; // raw spellings — for DB ilike patterns
   slug: string | null;    // canonical category, when the query names one
+  googleTypes: string[];  // Google primaryTypes implying that category
 };
 
 // Extract the dish term from a free query and expand its variants.
@@ -122,13 +124,14 @@ export function expandFoodQuery(raw: string, groups: DishGroup[] = FALLBACK_GROU
   const rawCleaned = rawWords.join(" ");
   const cleaned = normalize(rawCleaned);
   // Single characters match half the catalog — wait for real input.
-  if (cleaned.length < 2) return { term: "", variants: [], serverVariants: [], slug: null };
+  if (cleaned.length < 2) return { term: "", variants: [], serverVariants: [], slug: null, googleTypes: [] };
 
   const build = (group: DishGroup): ExpandedQuery => ({
     term: group.terms[0],
     variants: [...new Set([...group.terms.map(normalize), cleaned])],
     serverVariants: [...new Set([...group.terms.map(t => t.toLowerCase()), rawCleaned, cleaned])],
     slug: group.slug,
+    googleTypes: group.googleTypes,
   });
 
   for (const group of groups) {
@@ -147,7 +150,7 @@ export function expandFoodQuery(raw: string, groups: DishGroup[] = FALLBACK_GROU
   }
   if (best) return build(best.group);
 
-  return { term: rawCleaned, variants: [cleaned], serverVariants: [...new Set([rawCleaned, cleaned])], slug: null };
+  return { term: rawCleaned, variants: [cleaned], serverVariants: [...new Set([rawCleaned, cleaned])], slug: null, googleTypes: [] };
 }
 
 // --- Signal weights ------------------------------------------------
@@ -162,6 +165,12 @@ const W_SAVE = 0.15;           // log-scaled saves (popularity)
 // The place itself declaring the dish: authoritative that it EXISTS, but it
 // is the owner's own claim, so it ranks under a Magsad user's recommendation.
 const W_MENU = 0.9;
+// Google's primaryType says this place is a pizza_restaurant / ice_cream_shop.
+// Broad coverage — it is the only dish signal most of the catalog has — but
+// coarser than the others: `bakery` implies cake without specialising in it.
+// Ranked under both a name match and an owner-declared dish so the
+// approximation never outranks a place that actually claims the dish.
+const W_TYPE = 0.7;
 
 // Saves are only fetched for the leaders — keeps the .in() id list
 // (and the response rows) bounded no matter how broad the dish is.
@@ -179,6 +188,7 @@ type Candidate = {
   nameMatch: boolean;
   tagMatch: boolean;
   menuItems: string[];  // owner-declared dishes that matched
+  typeMatch: boolean;   // Google's primaryType implies the dish
   saves: number;
 };
 
@@ -204,7 +214,7 @@ export async function searchFood(rawQuery: string, viewerId: string | null): Pro
 
   // Expand against the DB taxonomy so search and the owner-facing category
   // picker share one vocabulary; falls back to the built-in list if it failed.
-  const { term, variants, serverVariants, slug } = expandFoodQuery(rawQuery, buildGroups(categories));
+  const { term, variants, serverVariants, slug, googleTypes } = expandFoodQuery(rawQuery, buildGroups(categories));
   if (!term) return { term: "", results: [] };
 
   // The canonical category this query means, so the menu query can match by
@@ -238,7 +248,7 @@ export async function searchFood(rawQuery: string, viewerId: string | null): Pro
     if (!place) return null;
     let c = candidates.get(placeId);
     if (!c) {
-      c = { place, reviewSignal: 0, recommenders: new Set(), comments: [], listTitles: [], nameMatch: false, tagMatch: false, menuItems: [], saves: 0 };
+      c = { place, reviewSignal: 0, recommenders: new Set(), comments: [], listTitles: [], nameMatch: false, tagMatch: false, menuItems: [], typeMatch: false, saves: 0 };
       candidates.set(placeId, c);
     }
     return c;
@@ -278,15 +288,19 @@ export async function searchFood(rawQuery: string, viewerId: string | null): Pro
   }
 
   // 3. Place-text signal — the place itself is about the dish
-  //    (normalized on BOTH sides, so folding is safe here)
+  //    (normalized on BOTH sides, so folding is safe here) — plus Google's
+  //    primaryType, which for most of the catalog is the ONLY dish signal:
+  //    description is empty catalog-wide and tags hold one value.
+  const wantedTypes = new Set(googleTypes);
   for (const p of places) {
     const name = normalize(`${p.name} ${p.nameEn}`);
     const meta = normalize(`${p.category} ${p.tags.join(" ")} ${p.description}`);
     const nameHit = variants.some(v => name.includes(v));
     const tagHit = variants.some(v => meta.includes(v));
-    if (nameHit || tagHit) {
+    const typeHit = !!p.primaryType && wantedTypes.has(p.primaryType);
+    if (nameHit || tagHit || typeHit) {
       const c = getCand(p.id);
-      if (c) { c.nameMatch = nameHit; c.tagMatch = tagHit; }
+      if (c) { c.nameMatch = nameHit; c.tagMatch = tagHit; c.typeMatch = typeHit; }
     }
   }
 
@@ -297,7 +311,8 @@ export async function searchFood(rawQuery: string, viewerId: string | null): Pro
     Math.min(3, c.listTitles.length) * W_LIST +
     (c.nameMatch ? W_NAME : 0) +
     (c.tagMatch ? W_TAG : 0) +
-    (c.menuItems.length ? W_MENU : 0);
+    (c.menuItems.length ? W_MENU : 0) +
+    (c.typeMatch ? W_TYPE : 0);
 
   // Rank once without saves, then fetch saves for the leaders only —
   // bounds the .in() list and the row count for arbitrarily broad terms.
@@ -336,9 +351,15 @@ export async function searchFood(rawQuery: string, viewerId: string | null): Pro
       sources.push("أطباق المكان");
     }
     if (c.nameMatch) reasons.push("متخصص في هذا الصنف");
+    // Only worth saying when nothing stronger already explains the match —
+    // "قوقل يصنّفه" under a place that also has the dish in its name is noise.
+    if (c.typeMatch && !c.nameMatch && !c.menuItems.length) {
+      reasons.push(`مصنّف لدى قوقل ضمن «${term}»`);
+      if (!sources.includes("بيانات قوقل")) sources.push("بيانات قوقل");
+    }
     if (c.place.googleRating && (c.place.googleReviewCount ?? 0) > 50) {
       reasons.push(`تقييم ${c.place.googleRating} من ${(c.place.googleReviewCount ?? 0).toLocaleString("en-US")} مراجعة`);
-      sources.push("بيانات قوقل");
+      if (!sources.includes("بيانات قوقل")) sources.push("بيانات قوقل");
     }
     // Best comments first: followed/creator recommendations, then rating
     const comments = [...c.comments]

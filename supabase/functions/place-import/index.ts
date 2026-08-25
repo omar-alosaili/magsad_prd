@@ -246,6 +246,9 @@ Deno.serve(async (req: Request) => {
     name,
     name_en: nameEn,
     type: mapType(p),
+    // mapType collapses this to كافيه/مطعم; the fine-grained value is what
+    // food search matches dish queries against.
+    primary_type: p.primaryType ?? null,
     category: "",
     district: district.name,
     address: p.formattedAddress ?? "",

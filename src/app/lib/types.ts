@@ -67,6 +67,7 @@ export type PlaceRow = {
   google_rating: number | null;
   google_review_count: number | null;
   google_place_id?: string | null;
+  primary_type: string | null;
   quality_score: number;
   quality_flags: string[];
   status: "published" | "search_only" | "quarantined" | "retired";
@@ -182,6 +183,7 @@ export function mapPlaceRow(row: PlaceRow): Place {
     googleRating: row.google_rating,
     googleReviewCount: row.google_review_count,
     googlePlaceId: row.google_place_id ?? null,
+    primaryType: row.primary_type ?? null,
     qualityScore: row.quality_score ?? 0,
     qualityFlags: row.quality_flags ?? [],
     status: row.status ?? "published",

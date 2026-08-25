@@ -116,7 +116,12 @@ const ENRICH_MASK = [
 ].join(",");
 
 const REFRESH_MASK = [
-  "id", "businessStatus", "photos", "rating", "userRatingCount",
+  // primaryType is Pro-tier and this mask already carries Enterprise fields
+  // (rating, opening hours, website…), so it rides along free — billing
+  // follows the highest tier requested. Refreshing it here is also what keeps
+  // primary_type a periodically-renewed value rather than a permanent store,
+  // matching how Google's caching terms are handled for lat/lng.
+  "id", "primaryType", "businessStatus", "photos", "rating", "userRatingCount",
   "regularOpeningHours", "currentOpeningHours", "websiteUri", "nationalPhoneNumber",
   ...(QUARTERLY_ATMOSPHERE ? [ATMOSPHERE_FIELDS] : []),
 ].join(",");
@@ -354,6 +359,9 @@ async function insertNewPlace(placeId, fsqId = null) {
     name: place.displayName?.text ?? "",
     name_en: nameEn,
     type: mapGoogleType(place),
+    // mapGoogleType collapses this to كافيه/مطعم; keep the fine-grained value
+    // too — it is what food search matches dish queries against.
+    primary_type: place.primaryType ?? null,
     category: "",
     district: districtName,
     address: place.formattedAddress ?? "",
@@ -523,6 +531,9 @@ async function refreshPlace(row) {
   const update = {
     opening_hours: mapOpeningHours(place),
     is_open: mapIsOpen(place),
+    // Only overwrite when Google actually returned one — a missing field must
+    // not wipe a value the backfill established.
+    ...(place.primaryType ? { primary_type: place.primaryType } : {}),
     google_rating: typeof place.rating === "number" ? place.rating : null,
     google_review_count: typeof place.userRatingCount === "number" ? place.userRatingCount : null,
     google_synced_at: new Date().toISOString(),
